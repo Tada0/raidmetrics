@@ -1,37 +1,38 @@
-<div class="dashboard">
-  <header>
-    <h1>Dashboard</h1>
-    <button (click)="logout()">Log out</button>
-  </header>
+<div class="p-8">
+
+  <div class="mb-6">
+    <h1 class="text-xl font-semibold text-text">Characters</h1>
+    <p class="text-muted text-sm mt-0.5">Your World of Warcraft characters</p>
+  </div>
 
   @if (state().loading) {
-    <p>Loading characters…</p>
+    <p class="text-muted text-sm">Loading characters…</p>
   } @else if (state().error) {
-    <p class="error">{{ state().error }}</p>
+    <p class="text-danger text-sm">{{ state().error }}</p>
   } @else {
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Realm</th>
-          <th>Class</th>
-          <th>Race</th>
-          <th>Level</th>
-          <th>Faction</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (char of state().characters; track char.name) {
+    <div class="rounded-xl border border-border overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-raised">
           <tr>
-            <td>{{ char.name }}</td>
-            <td>{{ char.realm }}</td>
-            <td>{{ char.class }}</td>
-            <td>{{ char.race }}</td>
-            <td>{{ char.level }}</td>
-            <td>{{ char.faction }}</td>
+            @for (col of ['Name','Realm','Class','Race','Level','Faction']; track col) {
+              <th class="px-4 py-2.5 text-left text-xs font-medium text-muted uppercase tracking-wider">{{ col }}</th>
+            }
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (char of state().characters; track char.name) {
+            <tr class="hover:bg-surface-raised/50 transition-colors">
+              <td class="px-4 py-3 text-text font-medium">{{ char.name }}</td>
+              <td class="px-4 py-3 text-muted">{{ char.realm }}</td>
+              <td class="px-4 py-3 text-muted">{{ char.class }}</td>
+              <td class="px-4 py-3 text-muted">{{ char.race }}</td>
+              <td class="px-4 py-3 text-muted">{{ char.level }}</td>
+              <td class="px-4 py-3 text-muted">{{ char.faction }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
+
 </div>

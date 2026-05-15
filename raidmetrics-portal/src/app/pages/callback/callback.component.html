@@ -1,8 +1,12 @@
-<div class="callback-container">
-  @if (error) {
-    <p class="error">{{ error }}</p>
-    <a routerLink="/">Back to login</a>
-  } @else {
-    <p>Logging you in…</p>
-  }
+<div class="min-h-screen bg-base flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl p-10 w-full max-w-sm text-center shadow-2xl">
+
+    @if (error) {
+      <p class="text-danger text-sm mb-4">{{ error }}</p>
+      <a routerLink="/" class="text-accent hover:text-accent-hover text-sm transition-colors">Back to login</a>
+    } @else {
+      <p class="text-muted text-sm">Logging you in…</p>
+    }
+
+  </div>
 </div>

@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BlizzardAuthService } from '../../services/blizzard-auth.service';
+import { BattlenetAuthService } from '../../services/battlenet-auth.service';
 
 @Component({
   selector: 'app-callback',
@@ -11,7 +11,7 @@ import { BlizzardAuthService } from '../../services/blizzard-auth.service';
 export class CallbackComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private authService = inject(BlizzardAuthService);
+  private battlenet = inject(BattlenetAuthService);
 
   error = '';
 
@@ -32,7 +32,7 @@ export class CallbackComponent implements OnInit {
 
     sessionStorage.removeItem('oauth_state');
 
-    this.authService.exchangeCode(code).subscribe({
+    this.battlenet.exchangeCode(code).subscribe({
       next: () => {
         const returnTo = sessionStorage.getItem('returnTo') ?? '/dashboard';
         sessionStorage.removeItem('returnTo');

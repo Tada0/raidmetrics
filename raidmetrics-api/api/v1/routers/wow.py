@@ -23,7 +23,7 @@ async def get_characters(
     db: Session = Depends(get_db),
 ) -> Any:
     if not current_user.blizzard_access_token:
-        raise HTTPException(status_code=401, detail="blizzard_token_expired")
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -36,7 +36,7 @@ async def get_characters(
         raise HTTPException(status_code=502, detail="Blizzard WoW API unavailable")
 
     if r.status_code == 401:
-        raise HTTPException(status_code=401, detail="blizzard_token_expired")
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
 
     r.raise_for_status()
 

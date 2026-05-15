@@ -7,7 +7,7 @@ from fastapi.openapi.utils import get_openapi
 
 from .dal.db import engine
 from .dal.models import Base
-from .v1.routers import blizzard_auth as blizzard_auth_v1
+from .v1.routers import battlenet_auth as battlenet_auth_v1
 from .v1.routers import session as session_v1
 from .v1.routers import wow as wow_v1
 
@@ -66,7 +66,7 @@ app.add_middleware(
 # V1
 v1_router = APIRouter()
 v1_auth_router = APIRouter(prefix="/auth")
-v1_auth_router.include_router(blizzard_auth_v1.router, prefix="/blizzard")
+v1_auth_router.include_router(battlenet_auth_v1.router, prefix="/battlenet")
 v1_auth_router.include_router(session_v1.router, prefix="/session")
 
 v1_router.include_router(v1_auth_router)

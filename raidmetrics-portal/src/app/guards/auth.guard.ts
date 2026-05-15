@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { BlizzardAuthService } from '../services/blizzard-auth.service';
+import { SessionService } from '../services/session.service';
 
 export const authGuard: CanActivateFn = () => {
-  const auth = inject(BlizzardAuthService);
+  const session = inject(SessionService);
   const router = inject(Router);
-  return auth.isLoggedIn() || router.createUrlTree(['/']);
+  return session.isLoggedIn() || router.createUrlTree(['/']);
 };

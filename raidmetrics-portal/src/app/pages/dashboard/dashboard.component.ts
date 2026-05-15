@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of, startWith } from 'rxjs';
-import { BlizzardAuthService } from '../../services/blizzard-auth.service';
+import { SessionService } from '../../services/session.service';
 import { WowService, WowCharacter } from '../../services/wow.service';
 
 interface DashboardState {
@@ -18,7 +18,7 @@ const LOADING: DashboardState = { loading: true, characters: [], error: '' };
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {
-  private auth = inject(BlizzardAuthService);
+  private session = inject(SessionService);
   private router = inject(Router);
   private wow = inject(WowService);
 
@@ -32,6 +32,6 @@ export class DashboardComponent {
   );
 
   logout(): void {
-    this.auth.logout().subscribe(() => this.router.navigate(['/']));
+    this.session.logout().subscribe(() => this.router.navigate(['/']));
   }
 }

@@ -8,7 +8,7 @@ from ...dal.models import RefreshToken
 from ..auth import (REFRESH_TOKEN_EXPIRES_DAYS, clear_refresh_cookie,
                     create_access_token, generate_refresh_token, hash_token,
                     set_refresh_cookie)
-from .blizzard_auth import TokenResponse
+from .battlenet_auth import TokenResponse
 
 router = APIRouter()
 

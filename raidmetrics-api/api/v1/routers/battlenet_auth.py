@@ -22,12 +22,12 @@ BLIZZARD_TOKEN_URL = "https://oauth.battle.net/token"
 BLIZZARD_USERINFO_URL = "https://oauth.battle.net/userinfo"
 
 
-class BlizzardLoginRedirectUrlResponse(BaseModel):
+class BattlenetLoginRedirectUrlResponse(BaseModel):
     state: str
     url: str
 
 
-class BlizzardCallbackRequest(BaseModel):
+class BattlenetCallbackRequest(BaseModel):
     code: str
 
 
@@ -40,7 +40,7 @@ class TokenResponse(BaseModel):
 router = APIRouter()
 
 
-@router.get("/login_redirect_url", response_model=BlizzardLoginRedirectUrlResponse, tags=["Blizzard"])
+@router.get("/login_redirect_url", response_model=BattlenetLoginRedirectUrlResponse, tags=["Battlenet"])
 async def login_redirect_url():
     state = uuid.uuid4().hex
 
@@ -52,15 +52,15 @@ async def login_redirect_url():
         "client_id": BLIZZARD_CLIENT_ID,
     })
 
-    return BlizzardLoginRedirectUrlResponse(
+    return BattlenetLoginRedirectUrlResponse(
         state=state,
         url=f"https://oauth.battle.net/authorize?{query}"
     )
 
 
-@router.post("/callback", response_model=TokenResponse, tags=["Blizzard"])
+@router.post("/callback", response_model=TokenResponse, tags=["Battlenet"])
 async def callback(
-    payload: BlizzardCallbackRequest,
+    payload: BattlenetCallbackRequest,
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
@@ -86,7 +86,7 @@ async def callback(
             userinfo_r.raise_for_status()
             userinfo = userinfo_r.json()
     except (HTTPError, TransportError):
-        raise HTTPException(status_code=502, detail="Blizzard auth service unavailable")
+        raise HTTPException(status_code=502, detail="Battlenet auth service unavailable")
 
     blizzard_sub = str(userinfo["sub"])
     battletag = userinfo.get("battletag")

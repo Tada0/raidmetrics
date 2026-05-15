@@ -1,7 +1,10 @@
 import asyncio
 import json
+import logging
 from typing import Any
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -79,8 +82,8 @@ async def _fetch_item_icon(client, item_id: int) -> tuple[int, str | None]:
         for asset in r.json().get("assets", []):
             if asset.get("key") == "icon":
                 return item_id, asset["value"]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to fetch icon for item %s: %s", item_id, e)
     return item_id, None
 
 
@@ -110,20 +113,6 @@ async def _fetch_full_guild_roster(client, realm_slug: str, guild_slug: str) -> 
         })
     return sorted(members, key=lambda x: (x["rank"], x["name"]))
 
-
-@router.get("/debug-guild-roster-raw", tags=["WoW"])
-async def debug_guild_roster_raw(
-    guild_realm_slug: str,
-    guild_slug: str,
-    current_user: User = Depends(get_current_user),
-) -> Any:
-    """Returns the raw Blizzard guild roster response for the first 2 members."""
-    if not current_user.blizzard_access_token:
-        raise HTTPException(status_code=401, detail="battlenet_token_expired")
-    async with battlenet_client(current_user.blizzard_access_token) as client:
-        r = await client.get(GUILD_ROSTER_PATH.format(realm=guild_realm_slug, guild=guild_slug))
-    members = r.json().get("members", [])
-    return {"first_two_members": members[:2]}
 
 
 @router.get("/characters", tags=["WoW"])

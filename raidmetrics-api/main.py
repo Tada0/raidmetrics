@@ -26,7 +26,7 @@ if __name__ == "__main__":
         app="api.init:app",
         host=os.getenv("RAIDMETRICS_PORTAL_API_HOST", "0.0.0.0"),
         port=int(os.getenv("RAIDMETRICS_PORTAL_API_PORT", 8000)),
-        reload=bool(os.getenv("RAIDMETRICS_PORTAL_API_RELOAD", True)),
+        reload=os.getenv("RAIDMETRICS_PORTAL_API_RELOAD", "true").lower() == "true",
         log_level="info",
         access_log=True,
         use_colors=True,

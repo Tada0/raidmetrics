@@ -55,7 +55,10 @@
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs font-medium text-muted uppercase tracking-wider">
               {{ difficultyLabels[activeTab()] }} Roster
-              <span class="ml-2 text-text font-semibold">{{ rosters()[activeTab()].length }}</span>
+              <span class="ml-2 font-semibold"
+                [class]="rosters()[activeTab()].length >= rosterLimits[activeTab()] ? 'text-danger' : 'text-text'">
+                {{ rosters()[activeTab()].length }}/{{ rosterLimits[activeTab()] }}
+              </span>
             </p>
             @if (canEdit()) {
               <button
@@ -124,7 +127,20 @@
         <!-- Add members panel (officers only) -->
         @if (canEdit()) {
           <div class="w-72 shrink-0 flex flex-col min-h-0">
-            <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Add from guild</p>
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-xs font-medium text-muted uppercase tracking-wider">Add from guild</p>
+              <button
+                (click)="refreshGuildRoster()"
+                [disabled]="refreshingRoster()"
+                class="flex items-center gap-1 text-xs text-muted hover:text-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh guild roster from Blizzard"
+              >
+                <svg class="w-3.5 h-3.5" [class.animate-spin]="refreshingRoster()" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {{ refreshingRoster() ? 'Refreshing…' : 'Refresh' }}
+              </button>
+            </div>
 
             <input
               type="text"
@@ -136,6 +152,8 @@
 
             @if (guildMembersLoading()) {
               <p class="text-muted text-xs px-1">Loading guild members…</p>
+            } @else if (rosters()[activeTab()].length >= rosterLimits[activeTab()]) {
+              <p class="text-danger text-xs px-1">Roster is full ({{ rosterLimits[activeTab()] }}/{{ rosterLimits[activeTab()] }}).</p>
             } @else if (filteredAvailable().length === 0) {
               <p class="text-muted text-xs px-1">
                 {{ searchQuery() ? 'No matches found.' : 'All guild members are already in the roster.' }}

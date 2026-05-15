@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 
 export interface WowCharacter {
   name: string;
@@ -41,5 +41,11 @@ export class WowService {
     return this.http.get<{ members: GuildMember[] }>('/api/v1/wow/guild-roster', {
       params: { guild_id: guildId, guild_realm_slug: guildRealmSlug, guild_slug: guildSlug },
     });
+  }
+
+  refreshGuildRoster(guildId: number, guildRealmSlug: string, guildSlug: string): Observable<{ members: GuildMember[] }> {
+    return this.http.delete<void>(`/api/v1/wow/guild-roster-cache/${guildId}`).pipe(
+      switchMap(() => this.getGuildRoster(guildId, guildRealmSlug, guildSlug)),
+    );
   }
 }

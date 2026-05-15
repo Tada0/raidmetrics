@@ -12,6 +12,7 @@ from ...dal.redis import get_redis
 from ..auth import get_current_user
 
 DIFFICULTIES = {"normal", "heroic", "mythic"}
+ROSTER_SIZE_LIMITS: dict[str, int] = {"normal": 30, "heroic": 30, "mythic": 20}
 
 router = APIRouter()
 
@@ -91,6 +92,13 @@ async def update_raid_roster(
 ) -> Any:
     if difficulty not in DIFFICULTIES:
         raise HTTPException(status_code=400, detail="Invalid difficulty")
+
+    limit = ROSTER_SIZE_LIMITS[difficulty]
+    if len(body.members) > limit:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{difficulty.capitalize()} roster cannot exceed {limit} members.",
+        )
 
     await _assert_officer(current_user.id, guild_id)
 

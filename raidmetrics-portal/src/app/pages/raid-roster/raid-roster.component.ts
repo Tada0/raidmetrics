@@ -18,6 +18,12 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   mythic: 'Mythic',
 };
 
+const ROSTER_LIMITS: Record<Difficulty, number> = {
+  normal: 30,
+  heroic: 30,
+  mythic: 20,
+};
+
 @Component({
   selector: 'app-raid-roster',
   imports: [FormsModule, RouterLink],
@@ -36,12 +42,14 @@ export class RaidRosterComponent {
 
   readonly difficulties: Difficulty[] = ['normal', 'heroic', 'mythic'];
   readonly difficultyLabels = DIFFICULTY_LABELS;
+  readonly rosterLimits = ROSTER_LIMITS;
 
   readonly activeTab = signal<Difficulty>('normal');
   readonly rostersLoading = signal(true);
   readonly guildMembersLoading = signal(false);
   readonly saving = signal<Difficulty | null>(null);
   readonly saveError = signal<string | null>(null);
+  readonly refreshingRoster = signal(false);
 
   readonly rosters = signal<RostersState>({ normal: [], heroic: [], mythic: [] });
   readonly guildMembers = signal<GuildMember[]>([]);
@@ -97,6 +105,7 @@ export class RaidRosterComponent {
   addMember(member: GuildMember): void {
     const tab = this.activeTab();
     const current = this.rosters();
+    if (current[tab].length >= ROSTER_LIMITS[tab]) return;
     const newMember: RosterMember = {
       character_name: member.name,
       character_realm: member.realm,
@@ -134,5 +143,18 @@ export class RaidRosterComponent {
   setTab(tab: Difficulty): void {
     this.activeTab.set(tab);
     this.searchQuery.set('');
+  }
+
+  refreshGuildRoster(): void {
+    const char = this.char();
+    if (!char?.guild_id || !char.guild_realm_slug || !char.guild_slug) return;
+    this.refreshingRoster.set(true);
+    this.wow.refreshGuildRoster(char.guild_id, char.guild_realm_slug, char.guild_slug).subscribe({
+      next: ({ members }) => {
+        this.guildMembers.set(members);
+        this.refreshingRoster.set(false);
+      },
+      error: () => this.refreshingRoster.set(false),
+    });
   }
 }

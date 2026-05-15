@@ -1,0 +1,94 @@
+services:
+  portal:
+    container_name: raidmetrics-portal
+    build:
+      context: ./raidmetrics-portal
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./raidmetrics-portal:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://api:8000
+      - FRONTEND_SECRET=${FRONTEND_SECRET}
+    networks:
+      - portal-api-net
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  api:
+    container_name: raidmetrics-api
+    build:
+      context: ./raidmetrics-api
+      target: dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./raidmetrics-api/api:/raidmetrics/api
+    environment:
+      - FRONTEND_SECRET=${FRONTEND_SECRET}
+      - DATABASE_URL=postgresql://${RAIDMETRICS_DB_USER}:${RAIDMETRICS_DB_PASSWORD}@db:5432/${RAIDMETRICS_DB_NAME}
+      - REDIS_URL=redis://raidmetrics-redis:6379/0
+      - JWT_SECRET=${JWT_SECRET}
+      - BLIZZARD_CLIENT_ID=${BLIZZARD_CLIENT_ID}
+      - BLIZZARD_CLIENT_SECRET=${BLIZZARD_CLIENT_SECRET}
+      - BLIZZARD_REGION=${BLIZZARD_REGION:-eu}
+      - BLIZZARD_REDIRECT_URI=${BLIZZARD_REDIRECT_URI}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - api-db-net
+      - portal-api-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-H", "X-Frontend-Auth: ${FRONTEND_SECRET}", "http://localhost:8000/api/v1/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  db:
+    container_name: raidmetrics-db
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=${RAIDMETRICS_DB_USER}
+      - POSTGRES_PASSWORD=${RAIDMETRICS_DB_PASSWORD}
+      - POSTGRES_DB=${RAIDMETRICS_DB_NAME}
+      - PGDATA=/data/postgres
+    volumes:
+      - /home/tomek/raidmetrics_db_data:/data/postgres
+    ports:
+      - "5332:5432"
+    networks:
+      - api-db-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${RAIDMETRICS_DB_NAME}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    container_name: raidmetrics-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - api-db-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  api-db-net:
+    driver: bridge
+  portal-api-net:
+    driver: bridge

@@ -1,0 +1,55 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# ---------------------------
+# Check arguments
+# ---------------------------
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 {start|stop|restart|rebuild} {dev|prod}"
+    exit 1
+fi
+
+ACTION=$1
+ENV=$2
+# ---------------------------
+# Determine docker-compose file
+# ---------------------------
+case "$ENV" in
+    dev)
+        COMPOSE_FILE="docker-compose.dev.yml"
+        ;;
+    prod)
+        COMPOSE_FILE="docker-compose.prod.yml"
+        ;;
+    *)
+        echo "Unknown environment: $ENV"
+        echo "Must be 'dev' or 'prod'"
+        exit 1
+        ;;
+esac
+
+# ---------------------------
+# Run docker-compose command
+# ---------------------------
+case "$ACTION" in
+    rebuild)
+        docker compose -f "$COMPOSE_FILE" --env-file .env.docker-compose down
+        docker compose -f "$COMPOSE_FILE" --env-file .env.docker-compose up -d --build
+        ;;
+    start)
+        docker compose -f "$COMPOSE_FILE" --env-file .env.docker-compose up -d --build
+        ;;
+    stop)
+        docker compose -f "$COMPOSE_FILE" --env-file .env.docker-compose down
+        ;;
+    restart)
+        docker compose -f "$COMPOSE_FILE" --env-file .env.docker-compose down
+        docker compose -f "$COMPOSE_FILE" --env-file .env.docker-compose up -d --build
+        ;;
+    *)
+        echo "Unknown action: $ACTION"
+        echo "Must be 'start', 'stop', or 'restart'"
+        exit 1
+        ;;
+esac

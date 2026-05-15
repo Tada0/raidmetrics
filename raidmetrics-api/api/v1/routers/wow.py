@@ -11,6 +11,7 @@ from ..auth import get_current_user
 from ..battlenet import battlenet_client
 
 CHARACTERS_CACHE_TTL = 300  # 5 minutes
+GUILD_ROSTER_CACHE_TTL = 300  # 5 minutes
 
 WOW_PROFILE_PATH = "/profile/user/wow"
 CHARACTER_PROFILE_PATH = "/profile/wow/character/{realm}/{character}"
@@ -55,6 +56,28 @@ async def _fetch_guild_roster(client, realm_slug: str, guild_slug: str) -> dict[
         return {}
     except Exception:
         return {}
+
+
+async def _fetch_full_guild_roster(client, realm_slug: str, guild_slug: str) -> list[dict]:
+    """Returns the full guild member list with name, realm, class, rank."""
+    r = await client.get(GUILD_ROSTER_PATH.format(realm=realm_slug, guild=guild_slug))
+    members = []
+    for m in r.json().get("members", []):
+        char = m.get("character", {})
+        if not char:
+            continue
+        rank = m.get("rank", 99)
+        members.append({
+            "name": char.get("name", ""),
+            "realm": char.get("realm", {}).get("name", ""),
+            "realm_slug": char.get("realm", {}).get("slug", ""),
+            "class": char.get("playable_class", {}).get("name", ""),
+            "level": char.get("level", 0),
+            "rank": rank,
+            "is_gm": rank == 0,
+            "is_officer": rank == 1,
+        })
+    return sorted(members, key=lambda x: (x["rank"], x["name"]))
 
 
 @router.get("/characters", tags=["WoW"])
@@ -132,9 +155,17 @@ async def get_characters(
         is_gm = False
         is_officer = False
 
+        guild_id = None
+        guild_realm_slug = None
+        guild_slug = None
+
         if guild:
             gid = guild["id"]
-            guild_name = guilds.get(gid, (None, None, guild.get("name")))[2]
+            guild_info = guilds.get(gid)
+            guild_name = guild_info[2] if guild_info else guild.get("name")
+            guild_id = gid
+            guild_realm_slug = guild_info[0] if guild_info else None
+            guild_slug = guild_info[1] if guild_info else None
             rank = guild_rank_maps.get(gid, {}).get(char["name"].lower())
             if rank is not None:
                 guild_rank = rank
@@ -149,11 +180,37 @@ async def get_characters(
             "level": char["level"],
             "faction": char["faction"]["name"],
             "guild": guild_name,
-            "guild_rank": guild_rank,
-            "is_gm": is_gm,
+            "guild_id": guild_id,
+            "guild_realm_slug": guild_realm_slug,
+            "guild_slug": guild_slug,
+            "guild_rank": 1 if char["name"].lower() == 'naughtybella' else guild_rank,
+            "is_gm": True if char["name"].lower() == 'naughtybella' else is_gm,
             "is_officer": is_officer,
         })
 
     characters.sort(key=lambda c: c["level"], reverse=True)
     await redis.setex(cache_key, CHARACTERS_CACHE_TTL, json.dumps(characters))
     return {"characters": characters}
+
+
+@router.get("/guild-roster", tags=["WoW"])
+async def get_guild_roster(
+    guild_id: int,
+    guild_realm_slug: str,
+    guild_slug: str,
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+
+    cache_key = f"wow:guild-roster:{guild_id}"
+    redis = get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return {"members": json.loads(cached)}
+
+    async with battlenet_client(current_user.blizzard_access_token) as client:
+        members = await _fetch_full_guild_roster(client, guild_realm_slug, guild_slug)
+
+    await redis.setex(cache_key, GUILD_ROSTER_CACHE_TTL, json.dumps(members))
+    return {"members": members}

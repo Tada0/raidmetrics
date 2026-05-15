@@ -8,3 +8,27 @@ html, body {
   font-family: system-ui, -apple-system, sans-serif;
   height: 100%;
 }
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1f2d42 #111827;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f2d42;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7889a4;
+}

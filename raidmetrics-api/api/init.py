@@ -8,6 +8,7 @@ from fastapi.openapi.utils import get_openapi
 from .dal.db import engine
 from .dal.models import Base
 from .v1.routers import battlenet_auth as battlenet_auth_v1
+from .v1.routers import raid_roster as raid_roster_v1
 from .v1.routers import session as session_v1
 from .v1.routers import wow as wow_v1
 
@@ -71,6 +72,7 @@ v1_auth_router.include_router(session_v1.router, prefix="/session")
 
 v1_router.include_router(v1_auth_router)
 v1_router.include_router(wow_v1.router, prefix="/wow")
+v1_router.include_router(raid_roster_v1.router, prefix="/raid-roster")
 
 # Health endpoint (protected by X-Frontend-Auth)
 @v1_router.get("/health", tags=["Health"])

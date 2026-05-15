@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        UniqueConstraint)
+from sqlalchemy import (BigInteger, Boolean, Column, DateTime, ForeignKey,
+                        Integer, String, UniqueConstraint)
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -35,3 +35,34 @@ class RefreshToken(Base):
     ip = Column(String, nullable=True)
 
     user = relationship("User", back_populates="refresh_tokens")
+
+
+class RaidRoster(Base):
+    __tablename__ = "raid_rosters"
+    id = Column(Integer, primary_key=True, index=True)
+    guild_id = Column(BigInteger, nullable=False, index=True)
+    guild_name = Column(String, nullable=False)
+    guild_realm_slug = Column(String, nullable=False)
+    difficulty = Column(String, nullable=False)  # 'normal', 'heroic', 'mythic'
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    members = relationship(
+        "RaidRosterMember",
+        back_populates="roster",
+        cascade="all, delete-orphan",
+        order_by="RaidRosterMember.sort_order",
+    )
+    __table_args__ = (UniqueConstraint("guild_id", "difficulty"),)
+
+
+class RaidRosterMember(Base):
+    __tablename__ = "raid_roster_members"
+    id = Column(Integer, primary_key=True, index=True)
+    roster_id = Column(Integer, ForeignKey("raid_rosters.id"), nullable=False)
+    character_name = Column(String, nullable=False)
+    character_realm = Column(String, nullable=False)
+    character_class = Column(String, nullable=True)
+    sort_order = Column(Integer, default=0)
+
+    roster = relationship("RaidRoster", back_populates="members")

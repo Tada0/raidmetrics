@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CharacterSelectionService } from '../../services/character-selection.service';
+import { CharactersStore } from '../../services/characters-store.service';
 import { SessionService } from '../../services/session.service';
 
 @Component({
@@ -12,6 +13,10 @@ export class DashboardLayoutComponent {
   private session = inject(SessionService);
   private router = inject(Router);
   readonly selection = inject(CharacterSelectionService);
+
+  constructor() {
+    inject(CharactersStore).load();
+  }
 
   logout(): void {
     this.session.logout().subscribe(() => this.router.navigate(['/']));

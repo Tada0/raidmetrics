@@ -9,6 +9,10 @@ export interface WowCharacter {
   race: string;
   level: number;
   faction: string;
+  guild: string | null;
+  guild_rank: number | null;
+  is_gm: boolean;
+  is_officer: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

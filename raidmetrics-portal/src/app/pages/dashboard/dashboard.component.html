@@ -14,7 +14,7 @@
       <table class="w-full text-sm">
         <thead class="bg-surface-raised">
           <tr>
-            @for (col of ['Name','Realm','Class','Race','Level','Faction']; track col) {
+            @for (col of ['Name','Realm','Class','Race','Level','Faction','Guild']; track col) {
               <th class="px-4 py-2.5 text-left text-xs font-medium text-muted uppercase tracking-wider">{{ col }}</th>
             }
           </tr>
@@ -28,6 +28,20 @@
               <td class="px-4 py-3 text-muted">{{ char.race }}</td>
               <td class="px-4 py-3 text-muted">{{ char.level }}</td>
               <td class="px-4 py-3 text-muted">{{ char.faction }}</td>
+              <td class="px-4 py-3">
+                @if (char.guild) {
+                  <div class="flex items-center gap-2">
+                    <span class="text-muted">{{ char.guild }}</span>
+                    @if (char.is_gm) {
+                      <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-400">GM</span>
+                    } @else if (char.is_officer) {
+                      <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-accent/15 text-accent">Officer</span>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-border">—</span>
+                }
+              </td>
             </tr>
           }
         </tbody>

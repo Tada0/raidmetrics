@@ -4,7 +4,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -73,17 +73,18 @@ async def _fetch_guild_roster(client, realm_slug: str, guild_slug: str) -> dict[
         return {}
 
 
-async def _fetch_item_icon(client, item_id: int) -> tuple[int, str | None]:
-    try:
-        r = await client.get(
-            ITEM_MEDIA_PATH.format(item_id=item_id),
-            params={"namespace": f"static-{REGION}"},
-        )
-        for asset in r.json().get("assets", []):
-            if asset.get("key") == "icon":
-                return item_id, asset["value"]
-    except Exception as e:
-        logger.warning("Failed to fetch icon for item %s: %s", item_id, e)
+async def _fetch_item_icon(client, sem: asyncio.Semaphore, item_id: int) -> tuple[int, str | None]:
+    async with sem:
+        try:
+            r = await client.get(
+                ITEM_MEDIA_PATH.format(item_id=item_id),
+                params={"namespace": f"static-{REGION}"},
+            )
+            for asset in r.json().get("assets", []):
+                if asset.get("key") == "icon":
+                    return item_id, asset["value"]
+        except Exception as e:
+            logger.warning("Failed to fetch icon for item %s: %s", item_id, e)
     return item_id, None
 
 
@@ -126,6 +127,7 @@ async def get_characters(
     redis = get_redis()
     cached = await redis.get(cache_key)
     if cached:
+        logger.info("Cache hit: %s", cache_key)
         return {"characters": json.loads(cached)}
 
     token = current_user.blizzard_access_token
@@ -250,6 +252,7 @@ async def get_guild_roster(
     redis = get_redis()
     cached = await redis.get(cache_key)
     if cached:
+        logger.info("Cache hit: %s", cache_key)
         return {"members": json.loads(cached)}
 
     async with battlenet_client(current_user.blizzard_access_token) as client:
@@ -283,6 +286,7 @@ async def get_character_detail(
     redis = get_redis()
     cached = await redis.get(cache_key)
     if cached:
+        logger.info("Cache hit: %s", cache_key)
         return json.loads(cached)
 
     async with battlenet_client(current_user.blizzard_access_token) as client:
@@ -326,13 +330,14 @@ async def get_character_detail(
                 "enchantment_id": enchant_id,
             })
 
-    # Fetch item icons concurrently (uses static namespace, overrides client default)
+    # Fetch item icons concurrently, capped at 5 to avoid DNS storm on WSL/low-resource envs
     unique_ids = list({i["item_id"] for i in items if i["item_id"]})
     icon_map: dict[int, str] = {}
     if unique_ids:
+        sem = asyncio.Semaphore(5)
         async with battlenet_client(current_user.blizzard_access_token) as client:
             icon_results = await asyncio.gather(
-                *[_fetch_item_icon(client, iid) for iid in unique_ids],
+                *[_fetch_item_icon(client, sem, iid) for iid in unique_ids],
                 return_exceptions=True,
             )
         for r in icon_results:

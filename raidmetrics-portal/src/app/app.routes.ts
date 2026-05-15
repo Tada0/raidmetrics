@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './pages/login/login.component';
 import { CallbackComponent } from './pages/callback/callback.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { CharacterDetailComponent } from './pages/character-detail/character-detail.component';
 import { GuildComponent } from './pages/guild/guild.component';
 import { RaidRosterComponent } from './pages/raid-roster/raid-roster.component';
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
@@ -16,6 +17,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', component: DashboardComponent },
+      { path: 'character', component: CharacterDetailComponent },
       { path: 'guild', component: GuildComponent },
       { path: 'raid-roster', component: RaidRosterComponent },
     ],

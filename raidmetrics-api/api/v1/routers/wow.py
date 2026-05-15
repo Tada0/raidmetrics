@@ -12,6 +12,7 @@ from ..battlenet import battlenet_client
 
 CHARACTERS_CACHE_TTL = 300  # 5 minutes
 GUILD_ROSTER_CACHE_TTL = 300  # 5 minutes
+CHARACTER_DETAIL_CACHE_TTL = 300  # 5 minutes
 
 # Static — WoW class IDs have never changed
 _CLASS_NAMES: dict[int, str] = {
@@ -22,6 +23,8 @@ _CLASS_NAMES: dict[int, str] = {
 
 WOW_PROFILE_PATH = "/profile/user/wow"
 CHARACTER_PROFILE_PATH = "/profile/wow/character/{realm}/{character}"
+CHARACTER_MEDIA_PATH = "/profile/wow/character/{realm}/{character}/character-media"
+CHARACTER_EQUIPMENT_PATH = "/profile/wow/character/{realm}/{character}/equipment"
 GUILD_ROSTER_PATH = "/data/wow/guild/{realm}/{guild}/roster"
 
 router = APIRouter()
@@ -209,6 +212,7 @@ async def get_characters(
         characters.append({
             "name": char["name"],
             "realm": char["realm"]["name"],
+            "realm_slug": char["realm"]["slug"],
             "class": char["playable_class"]["name"],
             "race": char["playable_race"]["name"],
             "level": char["level"],
@@ -258,3 +262,72 @@ async def bust_guild_roster_cache(
     redis = get_redis()
     await redis.delete(f"wow:guild-roster:{guild_id}")
     return {"cleared": True}
+
+
+@router.get("/character-detail", tags=["WoW"])
+async def get_character_detail(
+    realm_slug: str,
+    character_name: str,
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+
+    char_lower = character_name.lower()
+    cache_key = f"wow:character-detail:{realm_slug}:{char_lower}"
+    redis = get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return json.loads(cached)
+
+    async with battlenet_client(current_user.blizzard_access_token) as client:
+        profile_r, media_r, equip_r = await asyncio.gather(
+            client.get(CHARACTER_PROFILE_PATH.format(realm=realm_slug, character=char_lower)),
+            client.get(CHARACTER_MEDIA_PATH.format(realm=realm_slug, character=char_lower)),
+            client.get(CHARACTER_EQUIPMENT_PATH.format(realm=realm_slug, character=char_lower)),
+            return_exceptions=True,
+        )
+
+    if isinstance(profile_r, Exception):
+        raise HTTPException(status_code=502, detail="Failed to fetch character profile")
+
+    profile = profile_r.json()
+
+    avatar_url = inset_url = main_raw_url = None
+    if not isinstance(media_r, Exception):
+        assets = {a["key"]: a["value"] for a in media_r.json().get("assets", [])}
+        avatar_url = assets.get("avatar")
+        inset_url = assets.get("inset")
+        main_raw_url = assets.get("main-raw")
+
+    items = []
+    if not isinstance(equip_r, Exception):
+        for item in equip_r.json().get("equipped_items", []):
+            slot = item.get("slot", {})
+            items.append({
+                "slot": slot.get("name", ""),
+                "slot_type": slot.get("type", ""),
+                "name": item.get("name", ""),
+                "item_level": item.get("level", {}).get("value", 0),
+                "quality": item.get("quality", {}).get("type", "COMMON"),
+            })
+
+    result = {
+        "name": profile.get("name", ""),
+        "realm": profile.get("realm", {}).get("name", ""),
+        "level": profile.get("level", 0),
+        "faction": profile.get("faction", {}).get("name", ""),
+        "class": profile.get("character_class", {}).get("name", ""),
+        "race": profile.get("race", {}).get("name", ""),
+        "spec": profile.get("active_spec", {}).get("name"),
+        "guild": profile.get("guild", {}).get("name"),
+        "average_item_level": profile.get("average_item_level", 0),
+        "equipped_item_level": profile.get("equipped_item_level", 0),
+        "avatar_url": avatar_url,
+        "inset_url": inset_url,
+        "main_raw_url": main_raw_url,
+        "items": items,
+    }
+
+    await redis.setex(cache_key, CHARACTER_DETAIL_CACHE_TTL, json.dumps(result))
+    return result

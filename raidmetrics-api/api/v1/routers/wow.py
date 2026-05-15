@@ -1,12 +1,16 @@
 import asyncio
+import json
 from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...dal.models import User
+from ...dal.redis import get_redis
 from ..auth import get_current_user
 from ..battlenet import battlenet_client
+
+CHARACTERS_CACHE_TTL = 300  # 5 minutes
 
 WOW_PROFILE_PATH = "/profile/user/wow"
 CHARACTER_PROFILE_PATH = "/profile/wow/character/{realm}/{character}"
@@ -59,6 +63,12 @@ async def get_characters(
 ) -> Any:
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
+
+    cache_key = f"wow:characters:{current_user.id}"
+    redis = get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return {"characters": json.loads(cached)}
 
     token = current_user.blizzard_access_token
 
@@ -145,4 +155,5 @@ async def get_characters(
         })
 
     characters.sort(key=lambda c: c["level"], reverse=True)
+    await redis.setex(cache_key, CHARACTERS_CACHE_TTL, json.dumps(characters))
     return {"characters": characters}

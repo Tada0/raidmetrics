@@ -8,6 +8,15 @@
       <span class="text-base font-bold text-text tracking-tight">RaidMetrics</span>
     </div>
 
+    <!-- Selected character -->
+    @if (selection.selected(); as char) {
+      <div class="px-4 py-3 border-b border-border">
+        <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1.5">Active character</p>
+        <p class="text-sm font-semibold text-text leading-tight">{{ char.name }}</p>
+        <p class="text-xs text-muted mt-0.5">{{ char.realm }} · {{ char.class }}</p>
+      </div>
+    }
+
     <!-- Nav -->
     <nav class="flex-1 p-3 space-y-0.5">
       <a
@@ -20,6 +29,20 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         Characters
+      </a>
+
+      <a
+        routerLink="/dashboard/guild"
+        routerLinkActive="bg-surface-raised text-accent"
+        class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm"
+        [class]="selection.selected()
+          ? 'text-muted hover:text-text hover:bg-surface-raised'
+          : 'text-border cursor-default pointer-events-none'"
+      >
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 21V7l9-4 9 4v14M3 21h18M3 21H1m20 0h2M9 21V12h6v9" />
+        </svg>
+        Guild
       </a>
     </nav>
 

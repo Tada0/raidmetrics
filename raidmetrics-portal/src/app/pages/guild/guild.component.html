@@ -1,0 +1,49 @@
+<div class="p-8">
+
+  @if (!selection.selected()) {
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+      <p class="text-text font-medium mb-2">No character selected</p>
+      <p class="text-muted text-sm mb-6">Go to Characters and click a character to select them.</p>
+      <a routerLink="/dashboard" class="text-accent hover:text-accent-hover text-sm transition-colors">
+        Go to Characters
+      </a>
+    </div>
+  } @else {
+    @let char = selection.selected()!;
+
+    <div class="mb-6">
+      <h1 class="text-xl font-semibold text-text">{{ char.guild ?? 'No guild' }}</h1>
+      <p class="text-muted text-sm mt-0.5">Guild info for {{ char.name }}</p>
+    </div>
+
+    @if (!char.guild) {
+      <p class="text-muted text-sm">{{ char.name }} is not in a guild.</p>
+    } @else {
+      <div class="grid grid-cols-1 gap-4 max-w-lg">
+
+        <div class="bg-surface-raised rounded-xl border border-border p-5">
+          <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Character</p>
+          <p class="text-text font-semibold">{{ char.name }}</p>
+          <p class="text-muted text-sm mt-0.5">{{ char.realm }} · {{ char.class }}</p>
+        </div>
+
+        <div class="bg-surface-raised rounded-xl border border-border p-5">
+          <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Guild Role</p>
+          <div class="flex items-center gap-3">
+            <p class="text-text font-semibold">{{ roleLabel(char.is_gm, char.is_officer) }}</p>
+            @if (char.is_gm) {
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-400">GM</span>
+            } @else if (char.is_officer) {
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-accent/15 text-accent">Officer</span>
+            }
+          </div>
+          @if (char.guild_rank !== null) {
+            <p class="text-muted text-xs mt-1">Rank {{ char.guild_rank }}</p>
+          }
+        </div>
+
+      </div>
+    }
+  }
+
+</div>

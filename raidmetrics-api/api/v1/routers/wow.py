@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ...dal.models import User
 from ...dal.redis import get_redis
 from ..auth import get_current_user
-from ..battlenet import battlenet_client
+from ..battlenet import REGION, battlenet_client
 
 CHARACTERS_CACHE_TTL = 300  # 5 minutes
 GUILD_ROSTER_CACHE_TTL = 300  # 5 minutes
@@ -25,6 +25,7 @@ WOW_PROFILE_PATH = "/profile/user/wow"
 CHARACTER_PROFILE_PATH = "/profile/wow/character/{realm}/{character}"
 CHARACTER_MEDIA_PATH = "/profile/wow/character/{realm}/{character}/character-media"
 CHARACTER_EQUIPMENT_PATH = "/profile/wow/character/{realm}/{character}/equipment"
+ITEM_MEDIA_PATH = "/data/wow/media/item/{item_id}"
 GUILD_ROSTER_PATH = "/data/wow/guild/{realm}/{guild}/roster"
 
 router = APIRouter()
@@ -66,6 +67,20 @@ async def _fetch_guild_roster(client, realm_slug: str, guild_slug: str) -> dict[
         return {}
     except Exception:
         return {}
+
+
+async def _fetch_item_icon(client, item_id: int) -> tuple[int, str | None]:
+    try:
+        r = await client.get(
+            ITEM_MEDIA_PATH.format(item_id=item_id),
+            params={"namespace": f"static-{REGION}"},
+        )
+        for asset in r.json().get("assets", []):
+            if asset.get("key") == "icon":
+                return item_id, asset["value"]
+    except Exception:
+        pass
+    return item_id, None
 
 
 async def _fetch_full_guild_roster(client, realm_slug: str, guild_slug: str) -> list[dict]:
@@ -319,6 +334,21 @@ async def get_character_detail(
                 "bonus_ids": item.get("bonus_list", []),
                 "enchantment_id": enchant_id,
             })
+
+    # Fetch item icons concurrently (uses static namespace, overrides client default)
+    unique_ids = list({i["item_id"] for i in items if i["item_id"]})
+    icon_map: dict[int, str] = {}
+    if unique_ids:
+        async with battlenet_client(current_user.blizzard_access_token) as client:
+            icon_results = await asyncio.gather(
+                *[_fetch_item_icon(client, iid) for iid in unique_ids],
+                return_exceptions=True,
+            )
+        for r in icon_results:
+            if isinstance(r, tuple) and r[1]:
+                icon_map[r[0]] = r[1]
+    for item in items:
+        item["icon_url"] = icon_map.get(item["item_id"])
 
     result = {
         "name": profile.get("name", ""),

@@ -37,15 +37,23 @@
               [attr.data-wowhead]="wowheadData(item)"
               target="_blank"
               rel="noopener"
-              class="block flex flex-col items-end text-right px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
+              class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
             >
-              <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
-              <span class="text-sm font-medium leading-snug" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
-              <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+              <div class="flex flex-col items-end text-right flex-1 min-w-0">
+                <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
+                <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+              </div>
+              @if (item.icon_url) {
+                <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+              } @else {
+                <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+              }
             </a>
           } @else {
-            <div class="px-3 py-1.5 flex justify-end opacity-25">
-              <span class="text-muted text-xs">—</span>
+            <div class="px-2 py-1.5 flex justify-end items-center gap-2 opacity-20">
+              <span class="text-muted text-xs">Empty</span>
+              <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
             </div>
           }
         }
@@ -82,15 +90,23 @@
               [attr.data-wowhead]="wowheadData(item)"
               target="_blank"
               rel="noopener"
-              class="block flex flex-col items-start text-left px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
+              class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
             >
-              <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
-              <span class="text-sm font-medium leading-snug" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
-              <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+              @if (item.icon_url) {
+                <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+              } @else {
+                <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+              }
+              <div class="flex flex-col items-start text-left flex-1 min-w-0">
+                <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
+                <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+              </div>
             </a>
           } @else {
-            <div class="px-3 py-1.5 flex justify-start opacity-25">
-              <span class="text-muted text-xs">—</span>
+            <div class="px-2 py-1.5 flex justify-start items-center gap-2 opacity-20">
+              <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
+              <span class="text-muted text-xs">Empty</span>
             </div>
           }
         }
@@ -107,11 +123,18 @@
             [attr.data-wowhead]="wowheadData(item)"
             target="_blank"
             rel="noopener"
-            class="flex flex-col items-center text-center px-4 py-2 rounded-lg bg-surface border border-border hover:border-muted transition-colors min-w-36"
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors min-w-40"
           >
-            <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
-            <span class="text-sm font-medium leading-snug" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
-            <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+            @if (item.icon_url) {
+              <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+            } @else {
+              <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+            }
+            <div class="flex flex-col items-start text-left flex-1 min-w-0">
+              <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
+              <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+              <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+            </div>
           </a>
         }
       </div>

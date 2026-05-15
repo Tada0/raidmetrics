@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CharacterSelectionService } from '../../services/character-selection.service';
@@ -28,7 +29,7 @@ const QUALITY_COLORS: Record<string, string> = {
 
 @Component({
   selector: 'app-character-detail',
-  imports: [RouterLink],
+  imports: [RouterLink, DecimalPipe],
   templateUrl: './character-detail.component.html',
 })
 export class CharacterDetailComponent {
@@ -44,6 +45,16 @@ export class CharacterDetailComponent {
 
   readonly leftItems = computed(() => this._slotItems(LEFT_SLOTS));
   readonly rightItems = computed(() => this._slotItems(RIGHT_SLOTS));
+  readonly primaryStat = computed(() => {
+    const s = this.detail()?.stats;
+    if (!s) return null;
+    const candidates = [
+      { name: 'Strength', value: s.strength },
+      { name: 'Agility', value: s.agility },
+      { name: 'Intellect', value: s.intellect },
+    ];
+    return candidates.reduce((a, b) => a.value >= b.value ? a : b);
+  });
   readonly weaponItems = computed(() => {
     const map = this._itemMap();
     return WEAPON_SLOTS.map(s => map.get(s)).filter((i): i is CharacterItem => !!i);

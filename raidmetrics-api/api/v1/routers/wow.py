@@ -26,6 +26,7 @@ CHARACTER_PROFILE_PATH = "/profile/wow/character/{realm}/{character}"
 CHARACTER_MEDIA_PATH = "/profile/wow/character/{realm}/{character}/character-media"
 CHARACTER_EQUIPMENT_PATH = "/profile/wow/character/{realm}/{character}/equipment"
 ITEM_MEDIA_PATH = "/data/wow/media/item/{item_id}"
+CHARACTER_STATS_PATH = "/profile/wow/character/{realm}/{character}/statistics"
 GUILD_ROSTER_PATH = "/data/wow/guild/{realm}/{guild}/roster"
 
 router = APIRouter()
@@ -296,10 +297,11 @@ async def get_character_detail(
         return json.loads(cached)
 
     async with battlenet_client(current_user.blizzard_access_token) as client:
-        profile_r, media_r, equip_r = await asyncio.gather(
+        profile_r, media_r, equip_r, stats_r = await asyncio.gather(
             client.get(CHARACTER_PROFILE_PATH.format(realm=realm_slug, character=char_lower)),
             client.get(CHARACTER_MEDIA_PATH.format(realm=realm_slug, character=char_lower)),
             client.get(CHARACTER_EQUIPMENT_PATH.format(realm=realm_slug, character=char_lower)),
+            client.get(CHARACTER_STATS_PATH.format(realm=realm_slug, character=char_lower)),
             return_exceptions=True,
         )
 
@@ -350,6 +352,28 @@ async def get_character_detail(
     for item in items:
         item["icon_url"] = icon_map.get(item["item_id"])
 
+    stats = None
+    if not isinstance(stats_r, Exception):
+        s = stats_r.json()
+        m_crit  = s.get("melee_crit") or {}
+        m_haste = s.get("melee_haste") or {}
+        mastery = s.get("mastery") or {}
+        stats = {
+            "health":    s.get("health") or 0,
+            "stamina":   (s.get("stamina") or {}).get("effective") or 0,
+            "strength":  (s.get("strength") or {}).get("effective") or 0,
+            "agility":   (s.get("agility") or {}).get("effective") or 0,
+            "intellect": (s.get("intellect") or {}).get("effective") or 0,
+            "crit_rating":   m_crit.get("rating") or 0,
+            "crit_percent":  round(m_crit.get("value") or 0.0, 2),
+            "haste_rating":  m_haste.get("rating") or 0,
+            "haste_percent": round(m_haste.get("value") or 0.0, 2),
+            "mastery_rating":  mastery.get("rating") or 0,
+            "mastery_percent": round(mastery.get("value") or 0.0, 2),
+            "versatility_rating":  s.get("versatility") or 0,
+            "versatility_percent": round(s.get("versatility_damage_done_bonus") or 0.0, 2),
+        }
+
     result = {
         "name": profile.get("name", ""),
         "realm": profile.get("realm", {}).get("name", ""),
@@ -365,6 +389,7 @@ async def get_character_detail(
         "inset_url": inset_url,
         "main_raw_url": main_raw_url,
         "items": items,
+        "stats": stats,
     }
 
     await redis.setex(cache_key, CHARACTER_DETAIL_CACHE_TTL, json.dumps(result))

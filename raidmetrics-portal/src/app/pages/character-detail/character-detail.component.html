@@ -14,131 +14,194 @@
     <p class="text-danger text-sm">{{ error() }}</p>
   } @else if (detail(); as d) {
 
-    <!-- Name / spec header -->
-    <div class="text-center mb-8">
-      <h1 class="text-2xl font-bold text-text">{{ d.name }}</h1>
-      <p class="text-muted text-sm mt-1">
-        {{ d.spec ? d.spec + ' ' : '' }}{{ d.class }} · {{ d.race }} · Level {{ d.level }}
-      </p>
-      @if (d.guild) {
-        <p class="text-muted text-xs mt-0.5">&lt;{{ d.guild }}&gt; · {{ d.realm }}</p>
-      }
-    </div>
+    <!-- Page centering wrapper -->
+    <div class="flex justify-center">
+      <div class="flex flex-col">
 
-    <!-- Armory layout -->
-    <div class="flex gap-6 items-start justify-center max-w-5xl mx-auto">
+        <!-- pr-52 = stats width (w-44=176px) + gap (gap-8=32px), keeps text-center over the armory -->
+        <div class="text-center mb-8 pr-52">
+          <h1 class="text-2xl font-bold text-text">{{ d.name }}</h1>
+          <p class="text-muted text-sm mt-1">
+            {{ d.spec ? d.spec + ' ' : '' }}{{ d.class }} · {{ d.race }} · Level {{ d.level }}
+          </p>
+          @if (d.guild) {
+            <p class="text-muted text-xs mt-0.5">&lt;{{ d.guild }}&gt; · {{ d.realm }}</p>
+          }
+        </div>
 
-      <!-- Left items (right-aligned, slot label on the right edge) -->
-      <div class="flex flex-col gap-2 w-52 shrink-0">
-        @for (item of leftItems(); track $index) {
-          @if (item) {
-            <a
-              [href]="'https://www.wowhead.com/item=' + item.item_id"
-              [attr.data-wowhead]="wowheadData(item)"
-              target="_blank"
-              rel="noopener"
-              class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
-            >
-              <div class="flex flex-col items-end text-right flex-1 min-w-0">
-                <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
-                <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
-                <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
-              </div>
-              @if (item.icon_url) {
-                <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
-              } @else {
-                <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+        <!-- Gear columns + stats sidebar row -->
+        <div class="flex gap-8 items-start">
+
+          <!-- Armory: 3 gear columns -->
+          <div class="flex gap-6 items-start">
+
+            <!-- Left items (right-aligned, icon on right edge) -->
+            <div class="flex flex-col gap-2 w-52 shrink-0">
+              @for (item of leftItems(); track $index) {
+                @if (item) {
+                  <a
+                    [href]="'https://www.wowhead.com/item=' + item.item_id"
+                    [attr.data-wowhead]="wowheadData(item)"
+                    target="_blank"
+                    rel="noopener"
+                    class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
+                  >
+                    <div class="flex flex-col items-end text-right flex-1 min-w-0">
+                      <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
+                      <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                      <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+                    </div>
+                    @if (item.icon_url) {
+                      <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+                    } @else {
+                      <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+                    }
+                  </a>
+                } @else {
+                  <div class="px-2 py-1.5 flex justify-end items-center gap-2 opacity-20">
+                    <span class="text-muted text-xs">Empty</span>
+                    <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
+                  </div>
+                }
               }
-            </a>
-          } @else {
-            <div class="px-2 py-1.5 flex justify-end items-center gap-2 opacity-20">
-              <span class="text-muted text-xs">Empty</span>
-              <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
+            </div>
+
+            <!-- Center: character image + ilvl -->
+            <div class="flex flex-col items-center gap-4 w-80 shrink-0">
+              @if (d.main_raw_url) {
+                <img
+                  [src]="d.main_raw_url"
+                  [alt]="d.name"
+                  loading="eager"
+                  class="w-full h-auto"
+                />
+              } @else {
+                <div class="w-full aspect-[2/3] flex items-center justify-center rounded-xl bg-surface border border-border">
+                  <span class="text-muted text-sm">No image</span>
+                </div>
+              }
+              <div class="text-center">
+                <p class="text-xs text-muted uppercase tracking-wider">Equipped iLvl</p>
+                <p class="text-2xl font-bold text-accent">{{ d.equipped_item_level }}</p>
+              </div>
+            </div>
+
+            <!-- Right items (left-aligned, icon on left edge) -->
+            <div class="flex flex-col gap-2 w-52 shrink-0">
+              @for (item of rightItems(); track $index) {
+                @if (item) {
+                  <a
+                    [href]="'https://www.wowhead.com/item=' + item.item_id"
+                    [attr.data-wowhead]="wowheadData(item)"
+                    target="_blank"
+                    rel="noopener"
+                    class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
+                  >
+                    @if (item.icon_url) {
+                      <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+                    } @else {
+                      <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+                    }
+                    <div class="flex flex-col items-start text-left flex-1 min-w-0">
+                      <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
+                      <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                      <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+                    </div>
+                  </a>
+                } @else {
+                  <div class="px-2 py-1.5 flex justify-start items-center gap-2 opacity-20">
+                    <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
+                    <span class="text-muted text-xs">Empty</span>
+                  </div>
+                }
+              }
+            </div>
+
+          </div>
+
+          <!-- Stats sidebar — aligns with the top of the gear rows -->
+          @if (d.stats; as s) {
+            <div class="flex flex-col gap-1.5 w-44 shrink-0">
+
+              <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                <p class="text-muted text-xs uppercase tracking-wider">Health</p>
+                <p class="text-text font-semibold">{{ s.health | number:'1.0-0' }}</p>
+              </div>
+              <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                <p class="text-muted text-xs uppercase tracking-wider">Stamina</p>
+                <p class="text-text font-semibold">{{ s.stamina | number:'1.0-0' }}</p>
+              </div>
+              @if (primaryStat(); as ps) {
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">{{ ps.name }}</p>
+                  <p class="text-text font-semibold">{{ ps.value | number:'1.0-0' }}</p>
+                </div>
+              }
+
+              <div class="border-t border-border my-1"></div>
+
+              <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                <p class="text-muted text-xs uppercase tracking-wider">Critical Strike</p>
+                <p class="text-accent font-semibold">{{ s.crit_percent | number:'1.2-2' }}%</p>
+                @if (s.crit_rating) {
+                  <p class="text-muted text-xs">{{ s.crit_rating | number:'1.0-0' }} rating</p>
+                }
+              </div>
+              <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                <p class="text-muted text-xs uppercase tracking-wider">Haste</p>
+                <p class="text-accent font-semibold">{{ s.haste_percent | number:'1.2-2' }}%</p>
+                @if (s.haste_rating) {
+                  <p class="text-muted text-xs">{{ s.haste_rating | number:'1.0-0' }} rating</p>
+                }
+              </div>
+              <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                <p class="text-muted text-xs uppercase tracking-wider">Mastery</p>
+                <p class="text-accent font-semibold">{{ s.mastery_percent | number:'1.2-2' }}%</p>
+                @if (s.mastery_rating) {
+                  <p class="text-muted text-xs">{{ s.mastery_rating | number:'1.0-0' }} rating</p>
+                }
+              </div>
+              <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                <p class="text-muted text-xs uppercase tracking-wider">Versatility</p>
+                <p class="text-accent font-semibold">{{ s.versatility_percent | number:'1.2-2' }}%</p>
+                @if (s.versatility_rating) {
+                  <p class="text-muted text-xs">{{ s.versatility_rating | number:'1.0-0' }} rating</p>
+                }
+              </div>
+
             </div>
           }
-        }
-      </div>
 
-      <!-- Center: character image + ilvl -->
-      <div class="flex flex-col items-center gap-4 w-80 shrink-0">
-        @if (d.main_raw_url) {
-          <img
-            [src]="d.main_raw_url"
-            [alt]="d.name"
-            loading="eager"
-            class="w-full h-auto"
-          />
-        } @else {
-          <div class="w-full aspect-[2/3] flex items-center justify-center rounded-xl bg-surface border border-border">
-            <span class="text-muted text-sm">No image</span>
+        </div>
+
+        <!-- Weapon slots centered under the armory (pr-52 keeps justify-center over armory width) -->
+        @if (weaponItems().length > 0) {
+          <div class="flex justify-center gap-4 mt-4 pr-52">
+            @for (item of weaponItems(); track item.slot_type) {
+              <a
+                [href]="'https://www.wowhead.com/item=' + item.item_id"
+                [attr.data-wowhead]="wowheadData(item)"
+                target="_blank"
+                rel="noopener"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors min-w-40"
+              >
+                @if (item.icon_url) {
+                  <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+                } @else {
+                  <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+                }
+                <div class="flex flex-col items-start text-left flex-1 min-w-0">
+                  <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
+                  <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                  <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
+                </div>
+              </a>
+            }
           </div>
         }
 
-        <!-- iLvl badge -->
-        <div class="text-center">
-          <p class="text-xs text-muted uppercase tracking-wider">Equipped iLvl</p>
-          <p class="text-2xl font-bold text-accent">{{ d.equipped_item_level }}</p>
-        </div>
       </div>
-
-      <!-- Right items (left-aligned, slot label on the left edge) -->
-      <div class="flex flex-col gap-2 w-52 shrink-0">
-        @for (item of rightItems(); track $index) {
-          @if (item) {
-            <a
-              [href]="'https://www.wowhead.com/item=' + item.item_id"
-              [attr.data-wowhead]="wowheadData(item)"
-              target="_blank"
-              rel="noopener"
-              class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
-            >
-              @if (item.icon_url) {
-                <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
-              } @else {
-                <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
-              }
-              <div class="flex flex-col items-start text-left flex-1 min-w-0">
-                <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
-                <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
-                <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
-              </div>
-            </a>
-          } @else {
-            <div class="px-2 py-1.5 flex justify-start items-center gap-2 opacity-20">
-              <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
-              <span class="text-muted text-xs">Empty</span>
-            </div>
-          }
-        }
-      </div>
-
     </div>
-
-    <!-- Weapon slots centered below -->
-    @if (weaponItems().length > 0) {
-      <div class="flex justify-center gap-4 mt-4 max-w-5xl mx-auto">
-        @for (item of weaponItems(); track item.slot_type) {
-          <a
-            [href]="'https://www.wowhead.com/item=' + item.item_id"
-            [attr.data-wowhead]="wowheadData(item)"
-            target="_blank"
-            rel="noopener"
-            class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors min-w-40"
-          >
-            @if (item.icon_url) {
-              <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
-            } @else {
-              <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
-            }
-            <div class="flex flex-col items-start text-left flex-1 min-w-0">
-              <span class="text-muted text-xs leading-none mb-0.5">{{ slotLabel(item.slot_type) }}</span>
-              <span class="text-sm font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
-              <span class="text-muted text-xs leading-none mt-0.5">{{ item.item_level }}</span>
-            </div>
-          </a>
-        }
-      </div>
-    }
 
   }
 

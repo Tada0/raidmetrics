@@ -31,6 +31,22 @@ export interface CharacterItem {
   icon_url: string | null;
 }
 
+export interface CharacterStats {
+  health: number;
+  stamina: number;
+  strength: number;
+  agility: number;
+  intellect: number;
+  crit_rating: number;
+  crit_percent: number;
+  haste_rating: number;
+  haste_percent: number;
+  mastery_rating: number;
+  mastery_percent: number;
+  versatility_rating: number;
+  versatility_percent: number;
+}
+
 export interface CharacterDetail {
   name: string;
   realm: string;
@@ -46,6 +62,7 @@ export interface CharacterDetail {
   inset_url: string | null;
   main_raw_url: string | null;
   items: CharacterItem[];
+  stats: CharacterStats | null;
 }
 
 export interface GuildMember {

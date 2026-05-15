@@ -299,6 +299,8 @@ async def get_character_detail(
         )
 
     if isinstance(profile_r, Exception):
+        if isinstance(profile_r, HTTPException) and profile_r.status_code == 401:
+            raise HTTPException(status_code=401, detail="battlenet_token_expired")
         raise HTTPException(status_code=502, detail="Failed to fetch character profile")
 
     profile = profile_r.json()

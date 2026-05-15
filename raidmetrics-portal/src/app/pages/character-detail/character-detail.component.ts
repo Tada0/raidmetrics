@@ -85,4 +85,11 @@ export class CharacterDetailComponent {
   slotLabel(slotType: string): string {
     return SLOT_LABELS[slotType] ?? slotType;
   }
+
+  wowheadData(item: CharacterItem): string {
+    let s = `item=${item.item_id}`;
+    if (item.bonus_ids?.length) s += `&bonus=${item.bonus_ids.join(':')}`;
+    if (item.enchantment_id)   s += `&ench=${item.enchantment_id}`;
+    return s;
+  }
 }

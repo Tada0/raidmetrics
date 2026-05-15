@@ -304,12 +304,20 @@ async def get_character_detail(
     if not isinstance(equip_r, Exception):
         for item in equip_r.json().get("equipped_items", []):
             slot = item.get("slot", {})
+            enchant_id = next(
+                (e["enchantment_id"] for e in item.get("enchantments", [])
+                 if e.get("enchantment_slot", {}).get("type") == "PERMANENT"),
+                None,
+            )
             items.append({
                 "slot": slot.get("name", ""),
                 "slot_type": slot.get("type", ""),
                 "name": item.get("name", ""),
+                "item_id": item.get("item", {}).get("id", 0),
                 "item_level": item.get("level", {}).get("value", 0),
                 "quality": item.get("quality", {}).get("type", "COMMON"),
+                "bonus_ids": item.get("bonus_list", []),
+                "enchantment_id": enchant_id,
             })
 
     result = {

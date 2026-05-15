@@ -23,8 +23,11 @@ export interface CharacterItem {
   slot: string;
   slot_type: string;
   name: string;
+  item_id: number;
   item_level: number;
   quality: string;
+  bonus_ids: number[];
+  enchantment_id: number | null;
 }
 
 export interface CharacterDetail {

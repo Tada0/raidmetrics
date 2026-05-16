@@ -163,7 +163,7 @@ export class BisViewerComponent {
   });
 
   readonly craftedItems = computed((): PopularItem[] =>
-    this.bis.snapshot()?.popular_items.filter(i => i.is_crafted) ?? []
+    this.bis.snapshot()?.popular_items.filter(i => i.is_crafted && !i.is_embellishment) ?? []
   );
 
   readonly embellishments = computed((): PopularItem[] =>

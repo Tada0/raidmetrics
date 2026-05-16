@@ -92,9 +92,13 @@ def _parse_embellishments(page_data: dict) -> list[PopularItem]:
     if not props:
         return []
 
+    seen: set[int] = set()
     items: list[PopularItem] = []
-    for rank, row in enumerate(_rows_from_table(props.get("table", {})), start=1):
+    rank = 1
+    for row in _rows_from_table(props.get("table", {})):
         item = _item_from_row(row, slot="", is_crafted=True, is_embellishment=True, rank=rank)
-        if item:
+        if item and item.item_id not in seen:
+            seen.add(item.item_id)
             items.append(item)
+            rank += 1
     return items

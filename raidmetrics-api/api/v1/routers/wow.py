@@ -329,6 +329,11 @@ async def get_character_detail(
                 for s in item.get("sockets", [])
                 if s.get("item", {}).get("id")
             ]
+            crafted_stats = [
+                m["value"]
+                for m in item.get("modifications", [])
+                if m.get("value")
+            ]
             items.append({
                 "slot": slot.get("name", ""),
                 "slot_type": slot.get("type", ""),
@@ -339,6 +344,7 @@ async def get_character_detail(
                 "bonus_ids": item.get("bonus_list", []),
                 "enchantment_id": enchant_id,
                 "gem_ids": gem_ids,
+                "crafted_stats": crafted_stats,
             })
 
     unique_ids = list({i["item_id"] for i in items if i["item_id"]})

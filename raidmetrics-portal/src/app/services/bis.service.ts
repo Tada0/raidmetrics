@@ -59,6 +59,8 @@ export class BisService {
   readonly snapshot = signal<BisSnapshot | null>(null);
   readonly icons = signal<Map<number, string>>(new Map());
   readonly loading = signal(false);
+  readonly selectedClass = signal<string | null>(null);
+  readonly selectedSpec = signal<string | null>(null);
 
   loadSpecs(): void {
     this.http.get<BisSpec[]>('/api/v1/bis/specs').subscribe({

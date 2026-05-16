@@ -113,11 +113,20 @@ export class CharacterDetailComponent {
     return SLOT_LABELS[slotType] ?? slotType;
   }
 
+  wowheadHref(item: CharacterItem): string {
+    return `https://www.wowhead.com/item=${item.item_id}?${this._wowheadParams(item)}`;
+  }
+
   wowheadData(item: CharacterItem): string {
-    let s = `item=${item.item_id}`;
-    if (item.bonus_ids?.length)  s += `&bonus=${item.bonus_ids.join(':')}`;
-    if (item.enchantment_id)     s += `&ench=${item.enchantment_id}`;
-    if (item.gem_ids?.length)    s += `&gems=${item.gem_ids.join(':')}`;
+    return `item=${item.item_id}&${this._wowheadParams(item)}`;
+  }
+
+  private _wowheadParams(item: CharacterItem): string {
+    let s = `ilvl=${item.item_level}`;
+    if (item.bonus_ids?.length)      s += `&bonus=${item.bonus_ids.join(':')}`;
+    if (item.enchantment_id)         s += `&ench=${item.enchantment_id}`;
+    if (item.gem_ids?.length)        s += `&gems=${item.gem_ids.join(':')}`;
+    if (item.crafted_stats?.length)  s += `&crafted_stats=${item.crafted_stats.join(':')}`;
     return s;
   }
 }

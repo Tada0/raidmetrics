@@ -6,6 +6,7 @@ import { CharacterDetailComponent } from './pages/character-detail/character-det
 import { GuildComponent } from './pages/guild/guild.component';
 import { RaidRosterComponent } from './pages/raid-roster/raid-roster.component';
 import { BisViewerComponent } from './pages/bis-viewer/bis-viewer.component';
+import { RaidRosterCheckComponent } from './pages/raid-roster-check/raid-roster-check.component';
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
 import { authGuard } from './guards/auth.guard';
 
@@ -21,6 +22,7 @@ export const routes: Routes = [
       { path: 'character', component: CharacterDetailComponent },
       { path: 'guild', component: GuildComponent },
       { path: 'raid-roster', component: RaidRosterComponent },
+      { path: 'raid-roster-check', component: RaidRosterCheckComponent },
       { path: 'bis', component: BisViewerComponent },
     ],
   },

@@ -46,7 +46,7 @@
               @for (item of leftItems(); track $index) {
                 @if (item) {
                   <a
-                    [href]="'https://www.wowhead.com/item=' + item.item_id"
+                    [href]="wowheadHref(item)"
                     [attr.data-wowhead]="wowheadData(item)"
                     target="_blank"
                     rel="noopener"
@@ -102,7 +102,7 @@
               @for (item of rightItems(); track $index) {
                 @if (item) {
                   <a
-                    [href]="'https://www.wowhead.com/item=' + item.item_id"
+                    [href]="wowheadHref(item)"
                     [attr.data-wowhead]="wowheadData(item)"
                     target="_blank"
                     rel="noopener"
@@ -195,7 +195,7 @@
           <div class="flex justify-center gap-4 mt-4 pr-52">
             @for (item of weaponItems(); track item.slot_type) {
               <a
-                [href]="'https://www.wowhead.com/item=' + item.item_id"
+                [href]="wowheadHref(item)"
                 [attr.data-wowhead]="wowheadData(item)"
                 target="_blank"
                 rel="noopener"

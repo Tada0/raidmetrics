@@ -29,6 +29,7 @@ export interface CharacterItem {
   bonus_ids: number[];
   enchantment_id: number | null;
   gem_ids: number[];
+  crafted_stats: number[];
   icon_url: string | null;
 }
 

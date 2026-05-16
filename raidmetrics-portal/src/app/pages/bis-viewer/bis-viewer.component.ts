@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import {
   BisService,
@@ -19,8 +19,8 @@ type Tab = 'bis' | 'gear' | 'crafted' | 'enchants' | 'gems';
 export class BisViewerComponent {
   readonly bis = inject(BisService);
 
-  readonly selectedClass = signal<string | null>(null);
-  readonly selectedSpec = signal<string | null>(null);
+  readonly selectedClass = this.bis.selectedClass;
+  readonly selectedSpec = this.bis.selectedSpec;
   readonly activeTab = signal<Tab>('bis');
 
   readonly tabs: { id: Tab; label: string }[] = [
@@ -209,6 +209,16 @@ export class BisViewerComponent {
 
   constructor() {
     this.bis.loadSpecs();
+    effect(() => {
+      const specSlug = this.bis.selectedSpec();
+      const classSlug = this.bis.selectedClass();
+      const snap = this.bis.snapshot();
+      const loading = this.bis.loading();
+      if (!specSlug || !classSlug || loading) return;
+      if (!snap || snap.spec_slug !== specSlug || snap.class_slug !== classSlug) {
+        this.bis.loadSnapshot(specSlug, classSlug);
+      }
+    });
   }
 
   selectClass(classSlug: string): void {

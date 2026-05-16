@@ -324,6 +324,11 @@ async def get_character_detail(
                  if e.get("enchantment_slot", {}).get("type") == "PERMANENT"),
                 None,
             )
+            gem_ids = [
+                s["item"]["id"]
+                for s in item.get("sockets", [])
+                if s.get("item", {}).get("id")
+            ]
             items.append({
                 "slot": slot.get("name", ""),
                 "slot_type": slot.get("type", ""),
@@ -333,6 +338,7 @@ async def get_character_detail(
                 "quality": item.get("quality", {}).get("type", "COMMON"),
                 "bonus_ids": item.get("bonus_list", []),
                 "enchantment_id": enchant_id,
+                "gem_ids": gem_ids,
             })
 
     unique_ids = list({i["item_id"] for i in items if i["item_id"]})

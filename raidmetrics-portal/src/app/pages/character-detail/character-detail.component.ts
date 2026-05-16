@@ -115,8 +115,9 @@ export class CharacterDetailComponent {
 
   wowheadData(item: CharacterItem): string {
     let s = `item=${item.item_id}`;
-    if (item.bonus_ids?.length) s += `&bonus=${item.bonus_ids.join(':')}`;
-    if (item.enchantment_id)   s += `&ench=${item.enchantment_id}`;
+    if (item.bonus_ids?.length)  s += `&bonus=${item.bonus_ids.join(':')}`;
+    if (item.enchantment_id)     s += `&ench=${item.enchantment_id}`;
+    if (item.gem_ids?.length)    s += `&gems=${item.gem_ids.join(':')}`;
     return s;
   }
 }

@@ -28,6 +28,7 @@ export interface CharacterItem {
   quality: string;
   bonus_ids: number[];
   enchantment_id: number | null;
+  gem_ids: number[];
   icon_url: string | null;
 }
 

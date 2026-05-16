@@ -69,6 +69,12 @@ export class RaidRosterCheckComponent {
   readonly hasRan = signal(false);
   readonly results = signal<MemberResult[]>([]);
 
+  // Policies captured at run time — drive table columns so they don't shift on live changes
+  readonly ranEnchantPolicy = signal<EnchantPolicy>('none');
+  readonly ranGemPolicy = signal<GemPolicy>('none');
+  readonly ranEmbellishPolicy = signal<EmbellishPolicy>('none');
+
+
   readonly guild = computed(() => {
     const c = this.selection.selected();
     return c?.guild_id != null ? c : null;
@@ -86,6 +92,9 @@ export class RaidRosterCheckComponent {
     this.loading.set(true);
     this.results.set([]);
     this.hasRan.set(true);
+    this.ranEnchantPolicy.set(this.enchantPolicy());
+    this.ranGemPolicy.set(this.gemPolicy());
+    this.ranEmbellishPolicy.set(this.embellishPolicy());
 
     this.http.post<{ members: MemberResult[] }>('/api/v1/wow/roster-check', {
       guild_id: char.guild_id,

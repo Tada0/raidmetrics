@@ -147,13 +147,13 @@
           <tr class="border-b border-border bg-surface-raised">
             <th class="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">Character</th>
             <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-20">ilvl</th>
-            @if (enchantPolicy() !== 'none') {
+            @if (ranEnchantPolicy() !== 'none') {
               <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-28">Enchants</th>
             }
-            @if (gemPolicy() !== 'none') {
+            @if (ranGemPolicy() !== 'none') {
               <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-24">Gems</th>
             }
-            @if (embellishPolicy() !== 'none') {
+            @if (ranEmbellishPolicy() !== 'none') {
               <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-36">Embellishments</th>
             }
           </tr>
@@ -178,7 +178,7 @@
               </td>
 
               <!-- Enchants -->
-              @if (enchantPolicy() !== 'none') {
+              @if (ranEnchantPolicy() !== 'none') {
                 <td class="px-4 py-3 text-center">
                   @if (result.enchants.na) {
                     <span class="text-muted text-xs" title="Spec data unavailable">—</span>
@@ -194,7 +194,7 @@
               }
 
               <!-- Gems -->
-              @if (gemPolicy() !== 'none') {
+              @if (ranGemPolicy() !== 'none') {
                 <td class="px-4 py-3 text-center">
                   @if (result.gems.na) {
                     <span class="text-muted text-xs" title="Spec data unavailable">—</span>
@@ -210,7 +210,7 @@
               }
 
               <!-- Embellishments -->
-              @if (embellishPolicy() !== 'none') {
+              @if (ranEmbellishPolicy() !== 'none') {
                 <td class="px-4 py-3 text-center">
                   @if (result.embellishments.na) {
                     <span class="text-muted text-xs" title="Spec data unavailable">—</span>

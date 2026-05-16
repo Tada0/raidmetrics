@@ -1,16 +1,19 @@
 import asyncio
 import json
 import logging
+from collections import defaultdict
 from typing import Any
 from urllib.parse import urlparse
 
 logger = logging.getLogger("uvicorn.error")
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ...dal.db import get_db
-from ...dal.models import User, WowItemIcon
+from ...dal.models import RaidRoster, User, WowItemIcon
 from ...dal.redis import get_redis
 from ..auth import get_current_user
 from ..battlenet import REGION, battlenet_client
@@ -324,11 +327,8 @@ async def get_character_detail(
                  if e.get("enchantment_slot", {}).get("type") == "PERMANENT"),
                 None,
             )
-            gem_ids = [
-                s["item"]["id"]
-                for s in item.get("sockets", [])
-                if s.get("item", {}).get("id")
-            ]
+            sockets = item.get("sockets", [])
+            gem_ids = [s["item"]["id"] for s in sockets if s.get("item", {}).get("id")]
             crafted_stats = [
                 m["value"]
                 for m in item.get("modifications", [])
@@ -344,6 +344,7 @@ async def get_character_detail(
                 "bonus_ids": item.get("bonus_list", []),
                 "enchantment_id": enchant_id,
                 "gem_ids": gem_ids,
+                "socket_count": len(sockets),
                 "crafted_stats": crafted_stats,
             })
 
@@ -414,3 +415,397 @@ async def get_character_detail(
 
     await redis.setex(cache_key, CHARACTER_DETAIL_CACHE_TTL, json.dumps(result))
     return result
+
+
+async def _fetch_roster_member_equipment(
+    client, sem: asyncio.Semaphore, realm_slug: str, char_name: str
+) -> dict | None:
+    char_lower = char_name.lower()
+    async with sem:
+        try:
+            profile_r, equip_r = await asyncio.gather(
+                client.get(CHARACTER_PROFILE_PATH.format(realm=realm_slug, character=char_lower)),
+                client.get(CHARACTER_EQUIPMENT_PATH.format(realm=realm_slug, character=char_lower)),
+                return_exceptions=True,
+            )
+        except Exception:
+            return None
+
+    if isinstance(profile_r, Exception):
+        return None
+
+    try:
+        profile = profile_r.json()
+    except Exception:
+        return None
+
+    items = []
+    if not isinstance(equip_r, Exception):
+        try:
+            for item in equip_r.json().get("equipped_items", []):
+                slot = item.get("slot", {})
+                perm_ench = next(
+                    (e for e in item.get("enchantments", [])
+                     if e.get("enchantment_slot", {}).get("type") == "PERMANENT"),
+                    None,
+                )
+                # Blizzard's enchantment_id is an enchantment-effect ID, which differs
+                # from both the scroll item ID and the spell ID used by archon.gg.
+                # We also capture source_item.id (the scroll) for dual-comparison.
+                enchant_id = perm_ench["enchantment_id"] if perm_ench else None
+                enchant_item_id = (perm_ench or {}).get("source_item", {}).get("id") if perm_ench else None
+                # display_string is like "Enchanted: Mark of the Worldsoul" — strip prefix for name match
+                raw_display = (perm_ench or {}).get("display_string", "")
+                enchant_display_name = raw_display.removeprefix("Enchanted: ").strip().lower()
+                sockets = item.get("sockets", [])
+                gem_ids = [s["item"]["id"] for s in sockets if s.get("item", {}).get("id")]
+                limit_cat = item.get("limit_category", "")
+                is_embellished = isinstance(limit_cat, str) and "embellished" in limit_cat.lower()
+                spell_names = [
+                    s.get("spell", {}).get("name", "").lower().strip()
+                    for s in item.get("spells", [])
+                    if s.get("spell", {}).get("name")
+                ]
+                items.append({
+                    "slot": slot.get("name", ""),
+                    "slot_type": slot.get("type", ""),
+                    "item_id": item.get("item", {}).get("id", 0),
+                    "item_level": item.get("level", {}).get("value", 0),
+                    "enchantment_id": enchant_id,
+                    "enchant_item_id": enchant_item_id,
+                    "enchant_display_name": enchant_display_name,
+                    "gem_ids": gem_ids,
+                    "socket_count": len(sockets),
+                    "is_embellished": is_embellished,
+                    "spell_names": spell_names,
+                })
+        except Exception:
+            pass
+
+    return {
+        "name": profile.get("name", char_name),
+        "realm": (profile.get("realm") or {}).get("name", ""),
+        "spec": (profile.get("active_spec") or {}).get("name"),
+        "class": (profile.get("character_class") or {}).get("name", ""),
+        "equipped_item_level": profile.get("equipped_item_level", 0),
+        "average_item_level": profile.get("average_item_level", 0),
+        "items": items,
+    }
+
+
+@router.get("/roster-equipment", tags=["WoW"])
+async def get_roster_equipment(
+    guild_id: int,
+    difficulty: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+    if difficulty not in {"normal", "heroic", "mythic"}:
+        raise HTTPException(status_code=400, detail="Invalid difficulty")
+
+    roster = (
+        db.query(RaidRoster)
+        .filter(RaidRoster.guild_id == guild_id, RaidRoster.difficulty == difficulty)
+        .first()
+    )
+    if not roster or not roster.members:
+        return {"members": []}
+
+    sem = asyncio.Semaphore(5)
+    async with battlenet_client(current_user.blizzard_access_token) as client:
+        results = await asyncio.gather(
+            *[
+                _fetch_roster_member_equipment(
+                    client, sem,
+                    m.character_realm.lower().replace(" ", "-"),
+                    m.character_name,
+                )
+                for m in roster.members
+            ],
+            return_exceptions=True,
+        )
+
+    members = []
+    for result in results:
+        if isinstance(result, HTTPException) and result.status_code == 401:
+            raise result
+        if isinstance(result, dict):
+            members.append(result)
+
+    return {"members": members}
+
+
+# ---------------------------------------------------------------------------
+# Roster Check — comparison logic lives here, not on the frontend
+# ---------------------------------------------------------------------------
+
+_ENCHANT_SLOT_CANDIDATES: dict[str, list[str]] = {
+    "HEAD":      ["head"],
+    "NECK":      ["neck"],
+    "SHOULDER":  ["shoulders", "shoulder"],
+    "BACK":      ["back", "cloak"],
+    "CHEST":     ["chest"],
+    "WRIST":     ["wrist", "bracers"],
+    "WRISTWEAR": ["wrist", "bracers"],
+    "LEGS":      ["legs"],
+    "FEET":      ["feet", "boots"],
+    "FINGER_1":  ["rings", "ring", "finger"],
+    "FINGER_2":  ["rings", "ring", "finger"],
+    "MAIN_HAND": ["main-hand", "weapon"],
+    "OFF_HAND":  ["off-hand"],
+}
+
+
+def _norm_slot(slot: str) -> str:
+    return slot.lower().replace(" ", "-")
+
+
+def _resolve_enchant_slot(slot_type: str, known_slots: set[str]) -> str | None:
+    for candidate in _ENCHANT_SLOT_CANDIDATES.get(slot_type, []):
+        if candidate in known_slots:
+            return candidate
+    return None
+
+
+def _check_enchants(items: list, enchants: list, policy: str, member_name: str = "") -> dict:
+    if policy == "none":
+        return {"pass": True, "failing": [], "na": False}
+
+    # Group popular enchants by normalised slot name
+    by_slot: dict[str, list] = defaultdict(list)
+    for e in enchants:
+        by_slot[_norm_slot(e.slot)].append(e)
+
+    known_slots = set(by_slot.keys())
+    if not known_slots:
+        return {"pass": True, "failing": [], "na": True}
+
+    failing: list[str] = []
+    for item in items:
+        enchant_slot = _resolve_enchant_slot(item["slot_type"], known_slots)
+        if not enchant_slot:
+            continue
+
+        char_ids: set[int] = set()
+        if item.get("enchantment_id"):
+            char_ids.add(item["enchantment_id"])
+        if item.get("enchant_item_id"):
+            char_ids.add(item["enchant_item_id"])
+
+        if policy == "any":
+            if not char_ids and not item.get("enchant_display_name"):
+                failing.append(item["slot"])
+        else:  # top3
+            top3_ids   = {e.enchant_id for e in by_slot[enchant_slot] if e.rank <= 3}
+            top3_names = {e.enchant_name.lower() for e in by_slot[enchant_slot] if e.rank <= 3}
+            display    = item.get("enchant_display_name", "")
+            id_match   = bool(char_ids & top3_ids)
+            name_match = bool(display and any(display == n or n in display for n in top3_names))
+            matched    = id_match or name_match
+            logger.info(
+                "[roster-check] %s | slot=%s | char_ids=%s | display=%r | top3_ids=%s | top3_names=%s | id_match=%s | name_match=%s",
+                member_name, enchant_slot, char_ids, display, top3_ids, top3_names, id_match, name_match,
+            )
+            if not matched:
+                failing.append(item["slot"])
+
+    return {"pass": len(failing) == 0, "failing": failing, "na": False}
+
+
+def _check_gems(items: list, gems: list, policy: str) -> dict:
+    if policy == "none":
+        return {"pass": True, "failing": [], "na": False}
+
+    failing: list[str] = []
+
+    if policy == "any":
+        for item in items:
+            socket_count = item.get("socket_count", 0)
+            if not socket_count:
+                continue
+            if len(item.get("gem_ids", [])) < socket_count:
+                failing.append(item["slot"])
+        return {"pass": len(failing) == 0, "failing": failing, "na": False}
+
+    # top_gems: all sockets filled + 1 popular rare + all others from top-3 epics
+    top_epic_ids = {g.item_id for g in gems if g.gem_quality == "epic" and g.rank <= 3}
+    top_rare_ids = {g.item_id for g in gems if g.gem_quality == "rare" and g.rank <= 3}
+
+    if not top_epic_ids and not top_rare_ids:
+        return {"pass": False, "failing": [], "na": True}
+
+    all_gem_ids: list[int] = []
+    for item in items:
+        socket_count = item.get("socket_count", 0)
+        if not socket_count:
+            continue
+        gem_ids: list[int] = item.get("gem_ids", [])
+        if len(gem_ids) < socket_count:
+            failing.append(f"{item['slot']} (empty socket)")
+        else:
+            all_gem_ids.extend(gem_ids)
+            if not all(gid in top_epic_ids or gid in top_rare_ids for gid in gem_ids):
+                failing.append(f"{item['slot']} (wrong gem)")
+
+    # Rare requirement is global — can't pin it to a single slot
+    if all_gem_ids and not any(gid in top_rare_ids for gid in all_gem_ids):
+        failing.append("No top rare gem")
+
+    return {"pass": len(failing) == 0, "failing": failing, "na": False}
+
+
+def _check_embellishments(items: list, popular_items: list, policy: str) -> dict:
+    if policy == "none":
+        return {"pass": True, "failing": [], "na": False}
+
+    if policy == "any":
+        count = sum(1 for i in items if i.get("is_embellished"))
+        if count >= 2:
+            return {"pass": True, "failing": [], "na": False}
+        return {"pass": False, "failing": [f"Only {count}/2 embellishments equipped"], "na": False}
+
+    # top3: 2 embellished items whose spell name matches a top-3 spec embellishment name
+    top3_names = {i.item_name.lower().strip() for i in popular_items if i.is_embellishment and i.rank <= 3}
+    if not top3_names:
+        return {"pass": False, "failing": [], "na": True}
+
+    def has_top3_emb(item: dict) -> bool:
+        if not item.get("is_embellished"):
+            return False
+        return any(name in top3_names for name in item.get("spell_names", []))
+
+    qualifying = [i for i in items if has_top3_emb(i)]
+    count = len(qualifying)
+    if count >= 2:
+        return {"pass": True, "failing": [], "na": False}
+
+    failing: list[str] = []
+    if count == 0:
+        failing.append("No top-3 spec embellishments equipped")
+    else:
+        failing.append(f"Only 1/2 top-3 spec embellishments ({qualifying[0]['slot']} qualifies)")
+    return {"pass": False, "failing": failing, "na": False}
+
+
+class RosterCheckRequest(BaseModel):
+    guild_id: int
+    difficulty: str
+    min_ilvl: int = 0
+    enchant_policy: str = "none"   # none | any | top3
+    gem_policy: str = "none"       # none | any | top_gems
+    embellish_policy: str = "none" # none | any | top3
+
+
+@router.post("/roster-check", tags=["WoW"])
+async def roster_check(
+    body: RosterCheckRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+    if body.difficulty not in {"normal", "heroic", "mythic"}:
+        raise HTTPException(status_code=400, detail="Invalid difficulty")
+
+    roster = (
+        db.query(RaidRoster)
+        .filter(RaidRoster.guild_id == body.guild_id, RaidRoster.difficulty == body.difficulty)
+        .first()
+    )
+    if not roster or not roster.members:
+        return {"members": []}
+
+    # Fetch equipment for all roster members concurrently via Blizzard API
+    sem = asyncio.Semaphore(5)
+    async with battlenet_client(current_user.blizzard_access_token) as client:
+        raw = await asyncio.gather(
+            *[
+                _fetch_roster_member_equipment(
+                    client, sem,
+                    m.character_realm.lower().replace(" ", "-"),
+                    m.character_name,
+                )
+                for m in roster.members
+            ],
+            return_exceptions=True,
+        )
+
+    members: list[dict] = []
+    for r in raw:
+        if isinstance(r, HTTPException) and r.status_code == 401:
+            raise r
+        if isinstance(r, dict):
+            members.append(r)
+
+    output = []
+    for member in members:
+        spec      = member.get("spec") or ""
+        cls       = member.get("class") or ""
+        spec_slug = spec.lower().replace(" ", "-")
+        cls_slug  = cls.lower().replace(" ", "-")
+        items     = member.get("items", [])
+        equipped_ilvl = member.get("equipped_item_level", 0)
+
+        # Load popular data for this spec from the archon DB
+        snapshot_row = db.execute(text("""
+            SELECT s.id FROM archon_spec_snapshots s
+            JOIN archon_scrape_runs r ON r.id = s.run_id
+            WHERE r.success = true AND s.spec_slug = :spec AND s.class_slug = :cls
+            ORDER BY s.scraped_at DESC LIMIT 1
+        """), {"spec": spec_slug, "cls": cls_slug}).fetchone()
+
+        enchants_data: list = []
+        gems_data: list     = []
+        items_data: list    = []
+        spec_found = bool(snapshot_row)
+
+        if snapshot_row:
+            sid = snapshot_row.id
+            enchants_data = db.execute(text("""
+                SELECT slot, rank, enchant_id, enchant_name FROM archon_popular_enchants
+                WHERE snapshot_id = :sid ORDER BY slot, rank
+            """), {"sid": sid}).fetchall()
+
+            gems_data = db.execute(text("""
+                SELECT gem_quality, rank, item_id FROM archon_popular_gems
+                WHERE snapshot_id = :sid ORDER BY gem_quality DESC, rank
+            """), {"sid": sid}).fetchall()
+
+            items_data = db.execute(text("""
+                SELECT rank, item_id, item_name, is_embellishment FROM archon_popular_items
+                WHERE snapshot_id = :sid ORDER BY rank
+            """), {"sid": sid}).fetchall()
+
+        na_result = {"pass": False, "failing": [], "na": True}
+
+        enchant_res = (
+            _check_enchants(items, enchants_data, body.enchant_policy, member.get("name", ""))
+            if (spec_found or body.enchant_policy == "none")
+            else na_result
+        )
+        gem_res = (
+            _check_gems(items, gems_data, body.gem_policy)
+            if (spec_found or body.gem_policy in ("none", "any"))
+            else na_result
+        )
+        emb_res = (
+            _check_embellishments(items, items_data, body.embellish_policy)
+            if (spec_found or body.embellish_policy in ("none", "any"))
+            else na_result
+        )
+
+        output.append({
+            "name": member.get("name"),
+            "realm": member.get("realm"),
+            "spec": spec or None,
+            "class": cls,
+            "equipped_item_level": equipped_ilvl,
+            "ilvl": {"pass": equipped_ilvl >= body.min_ilvl},
+            "enchants": enchant_res,
+            "gems": gem_res,
+            "embellishments": emb_res,
+        })
+
+    return {"members": output}

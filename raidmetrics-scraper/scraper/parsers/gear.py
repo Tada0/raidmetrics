@@ -35,9 +35,13 @@ def _item_from_row(row: dict, slot: str, is_crafted: bool, is_embellishment: boo
     item_jsx = row.get("item", "")
     # Embellishments can have two ItemIcon tags — take the first non-blank one
     if is_embellishment:
-        ids = re.findall(r'id=\{(\d+)\}', item_jsx)
+        # Archon.gg shows two icons: the embellishment effect (ItemIcon) and the
+        # wearable crafted piece (GearIcon). Blizzard's API returns the GearIcon's
+        # item_id for equipped items, so prefer that over any ItemIcon id.
+        gear_ids = re.findall(r'<GearIcon\b[^>]*?id=\{(\d+)\}', item_jsx)
+        all_ids = re.findall(r'id=\{(\d+)\}', item_jsx)
+        item_id = int(gear_ids[0]) if gear_ids else (int(all_ids[0]) if all_ids else None)
         names = re.findall(r'>([^<>&][^<>]*)</(Item|Gear)Icon>', item_jsx)
-        item_id = int(ids[0]) if ids else None
         item_name = names[0][0].strip() if names else ""
     else:
         item_id = extract_id(item_jsx)

@@ -61,6 +61,7 @@ export class BisService {
   readonly loading = signal(false);
   readonly selectedClass = signal<string | null>(null);
   readonly selectedSpec = signal<string | null>(null);
+  readonly snapshotMap = signal<Map<string, BisSnapshot>>(new Map());
 
   loadSpecs(): void {
     this.http.get<BisSpec[]>('/api/v1/bis/specs').subscribe({
@@ -87,6 +88,21 @@ export class BisService {
         if (ids.length) this._loadIcons(ids);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  loadSnapshotForSpec(specSlug: string, classSlug: string): void {
+    const key = `${specSlug}/${classSlug}`;
+    if (this.snapshotMap().has(key)) return;
+    this.http.get<BisSnapshot>('/api/v1/bis/snapshot', {
+      params: { spec: specSlug, class: classSlug },
+    }).subscribe({
+      next: s => {
+        const m = new Map(this.snapshotMap());
+        m.set(key, s);
+        this.snapshotMap.set(m);
+      },
+      error: () => {},
     });
   }
 

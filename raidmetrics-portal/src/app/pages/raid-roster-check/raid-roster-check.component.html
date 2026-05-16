@@ -1,6 +1,239 @@
 <div class="p-8">
+
+  <!-- Header -->
   <div class="mb-6">
     <h1 class="text-xl font-semibold text-text">Raid Roster Check</h1>
-    <p class="text-muted text-sm mt-0.5">Coming soon.</p>
+    <p class="text-muted text-sm mt-0.5">Compare your roster's gear against popular and BiS items.</p>
   </div>
+
+  <!-- Controls row -->
+  <div class="flex items-center gap-4 mb-6">
+
+    <!-- Difficulty tabs -->
+    <div class="flex rounded-lg border border-border overflow-hidden">
+      @for (diff of difficulties; track diff) {
+        <button
+          (click)="selectedDifficulty.set(diff)"
+          class="px-3 py-1.5 text-sm font-medium transition-colors"
+          [class]="selectedDifficulty() === diff
+            ? 'bg-accent text-white'
+            : 'bg-surface-raised text-muted hover:text-text'"
+        >{{ diffLabels[diff] }}</button>
+      }
+    </div>
+
+    <!-- Run Check -->
+    <button
+      (click)="runCheck()"
+      [disabled]="!guild() || loading()"
+      class="px-4 py-1.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      @if (loading()) { Checking… } @else { Run Check }
+    </button>
+
+    @if (!guild()) {
+      <p class="text-xs text-muted">Select a guild character first.</p>
+    }
+    @if (hasRan() && !loading() && results().length > 0) {
+      <p class="text-xs text-muted ml-auto">{{ passCount() }} / {{ results().length }} fully passing</p>
+    }
+
+  </div>
+
+  <!-- Criteria cards -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+
+    <!-- Min ilvl -->
+    <div class="bg-surface border border-border rounded-lg p-4">
+      <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Min ilvl</p>
+      <input
+        type="number"
+        [ngModel]="minIlvl()"
+        (ngModelChange)="minIlvl.set($event)"
+        min="0"
+        class="w-full bg-surface-raised border border-border rounded px-2 py-1.5 text-sm text-text focus:outline-none focus:border-accent"
+      />
+    </div>
+
+    <!-- Enchants -->
+    <div class="bg-surface border border-border rounded-lg p-4">
+      <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Enchants</p>
+      <div class="space-y-2">
+        @for (opt of enchantOptions; track opt.value) {
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="enchant"
+              [value]="opt.value"
+              [ngModel]="enchantPolicy()"
+              (ngModelChange)="enchantPolicy.set($event)"
+              class="accent-accent"
+            />
+            <span class="text-sm text-text">{{ opt.label }}</span>
+            @if (opt.info) {
+              <svg class="w-3.5 h-3.5 text-muted hover:text-text cursor-help shrink-0" [attr.title]="opt.info" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <title>{{ opt.info }}</title>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+            }
+          </label>
+        }
+      </div>
+    </div>
+
+    <!-- Gems -->
+    <div class="bg-surface border border-border rounded-lg p-4">
+      <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Gems</p>
+      <div class="space-y-2">
+        @for (opt of gemOptions; track opt.value) {
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="gem"
+              [value]="opt.value"
+              [ngModel]="gemPolicy()"
+              (ngModelChange)="gemPolicy.set($event)"
+              class="accent-accent"
+            />
+            <span class="text-sm text-text">{{ opt.label }}</span>
+            @if (opt.info) {
+              <svg class="w-3.5 h-3.5 text-muted hover:text-text cursor-help shrink-0" [attr.title]="opt.info" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <title>{{ opt.info }}</title>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+            }
+          </label>
+        }
+      </div>
+    </div>
+
+    <!-- Embellishments -->
+    <div class="bg-surface border border-border rounded-lg p-4">
+      <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Embellishments</p>
+      <div class="space-y-2">
+        @for (opt of embellishOptions; track opt.value) {
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="embellish"
+              [value]="opt.value"
+              [ngModel]="embellishPolicy()"
+              (ngModelChange)="embellishPolicy.set($event)"
+              class="accent-accent"
+            />
+            <span class="text-sm text-text">{{ opt.label }}</span>
+            @if (opt.info) {
+              <svg class="w-3.5 h-3.5 text-muted hover:text-text cursor-help shrink-0" [attr.title]="opt.info" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <title>{{ opt.info }}</title>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+            }
+          </label>
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Results table -->
+  @if (loading()) {
+    <div class="bg-surface border border-border rounded-lg p-8 text-center text-muted text-sm">
+      Loading roster data… this may take a moment.
+    </div>
+  } @else if (results().length > 0) {
+    <div class="bg-surface border border-border rounded-lg overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border bg-surface-raised">
+            <th class="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">Character</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-20">ilvl</th>
+            @if (enchantPolicy() !== 'none') {
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-28">Enchants</th>
+            }
+            @if (gemPolicy() !== 'none') {
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-24">Gems</th>
+            }
+            @if (embellishPolicy() !== 'none') {
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider w-36">Embellishments</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (result of results(); track result.name) {
+            <tr class="border-b border-border last:border-0 hover:bg-surface-raised/40 transition-colors">
+
+              <!-- Character name + spec -->
+              <td class="px-4 py-3">
+                <p class="font-medium text-text">{{ result.name }}</p>
+                <p class="text-xs text-muted mt-0.5">
+                  @if (result.spec) { {{ result.spec }} · }{{ result.class }}
+                </p>
+              </td>
+
+              <!-- ilvl -->
+              <td class="px-4 py-3 text-center">
+                <span [class]="result.ilvl.pass ? 'font-semibold text-accent' : 'font-semibold text-danger'">
+                  {{ result.equipped_item_level }}
+                </span>
+              </td>
+
+              <!-- Enchants -->
+              @if (enchantPolicy() !== 'none') {
+                <td class="px-4 py-3 text-center">
+                  @if (result.enchants.na) {
+                    <span class="text-muted text-xs" title="Spec data unavailable">—</span>
+                  } @else if (result.enchants.pass) {
+                    <span class="text-accent font-bold">✓</span>
+                  } @else {
+                    <span
+                      class="text-danger font-bold cursor-help"
+                      [title]="tooltip(result.enchants)"
+                    >✗</span>
+                  }
+                </td>
+              }
+
+              <!-- Gems -->
+              @if (gemPolicy() !== 'none') {
+                <td class="px-4 py-3 text-center">
+                  @if (result.gems.na) {
+                    <span class="text-muted text-xs" title="Spec data unavailable">—</span>
+                  } @else if (result.gems.pass) {
+                    <span class="text-accent font-bold">✓</span>
+                  } @else {
+                    <span
+                      class="text-danger font-bold cursor-help"
+                      [title]="tooltip(result.gems)"
+                    >✗</span>
+                  }
+                </td>
+              }
+
+              <!-- Embellishments -->
+              @if (embellishPolicy() !== 'none') {
+                <td class="px-4 py-3 text-center">
+                  @if (result.embellishments.na) {
+                    <span class="text-muted text-xs" title="Spec data unavailable">—</span>
+                  } @else if (result.embellishments.pass) {
+                    <span class="text-accent font-bold">✓</span>
+                  } @else {
+                    <span
+                      class="text-danger font-bold cursor-help"
+                      [title]="tooltip(result.embellishments)"
+                    >✗</span>
+                  }
+                </td>
+              }
+
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (hasRan()) {
+    <div class="bg-surface border border-border rounded-lg p-8 text-center text-muted text-sm">
+      No roster members found for {{ diffLabels[selectedDifficulty()] }}.
+    </div>
+  }
+
 </div>

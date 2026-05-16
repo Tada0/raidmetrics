@@ -1,0 +1,346 @@
+<div class="p-6 max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="mb-5">
+    <h1 class="text-lg font-semibold text-text">BiS Viewer</h1>
+    <p class="text-xs text-muted mt-0.5">Best-in-slot gear, enchants and gems sourced from Archon.gg</p>
+  </div>
+
+  <!-- No data -->
+  @if (bis.specs() !== null && classes().length === 0) {
+    <div class="text-center py-16">
+      <p class="text-sm text-muted">No scraped data available yet.</p>
+      <p class="text-xs text-muted mt-1">Use the Refresh BiS Data button to run a scrape.</p>
+    </div>
+  }
+
+  @if (classes().length > 0) {
+
+    <!-- Class selector -->
+    <div class="flex flex-wrap gap-1.5 mb-3">
+      @for (cls of classes(); track cls.class_slug) {
+        <button
+          (click)="selectClass(cls.class_slug)"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors"
+          [class]="selectedClass() === cls.class_slug
+            ? 'bg-surface-raised border-border'
+            : 'bg-surface border-transparent text-muted hover:bg-surface-raised hover:text-text'"
+          [style.color]="selectedClass() === cls.class_slug ? classColor(cls.class_slug) : ''"
+        >
+          {{ cls.class_name }}
+        </button>
+      }
+    </div>
+
+    <!-- Spec selector -->
+    @if (selectedClass()) {
+      <div class="flex flex-wrap gap-1.5 mb-6">
+        @for (spec of specsForClass(); track spec.spec_slug) {
+          <button
+            (click)="selectSpec(spec)"
+            class="px-3 py-1 rounded-md text-sm border transition-colors"
+            [class]="selectedSpec() === spec.spec_slug
+              ? 'bg-accent/10 border-accent/30 text-accent font-medium'
+              : 'bg-surface border-transparent text-muted hover:bg-surface-raised hover:text-text'"
+          >
+            {{ spec.spec_name }}
+          </button>
+        }
+      </div>
+    }
+
+  }
+
+  <!-- Loading -->
+  @if (bis.loading()) {
+    <div class="flex items-center justify-center gap-2 py-16 text-muted text-sm">
+      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <span>Loading…</span>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (bis.snapshot(); as snap) {
+
+    <!-- Tabs -->
+    <div class="flex gap-0 border-b border-border mb-5">
+      @for (tab of tabs; track tab.id) {
+        <button
+          (click)="activeTab.set(tab.id)"
+          class="px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors"
+          [class]="activeTab() === tab.id
+            ? 'border-accent text-accent'
+            : 'border-transparent text-muted hover:text-text'"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </div>
+
+    <!-- BiS Gear tab -->
+    @if (activeTab() === 'bis') {
+      @if (bisItems().length > 0) {
+        <div class="bg-surface rounded-lg border border-border overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-border bg-surface-raised/50">
+                <th class="px-4 py-2.5 text-left text-xs font-medium text-muted uppercase tracking-wider w-32">Slot</th>
+                <th class="px-4 py-2.5 text-left text-xs font-medium text-muted uppercase tracking-wider">Item</th>
+                <th class="px-4 py-2.5 text-right text-xs font-medium text-muted uppercase tracking-wider w-20">Usage</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border/50">
+              @for (item of bisItems(); track $index) {
+                <tr class="hover:bg-surface-raised/40 transition-colors">
+                  <td class="px-4 py-2.5 text-xs text-muted capitalize">{{ item.slot }}</td>
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-2">
+                      @if (item.is_bis) {
+                        <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
+                      }
+                      <a
+                        [href]="wowheadItem(item.item_id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-text hover:text-accent transition-colors"
+                      >{{ item.item_name }}</a>
+                    </div>
+                  </td>
+                  <td class="px-4 py-2.5 text-right text-xs text-muted tabular-nums">
+                    {{ item.usage_percent != null ? item.usage_percent.toFixed(1) + '%' : '—' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="text-sm text-muted py-8 text-center">No BiS data available for this spec.</p>
+      }
+    }
+
+    <!-- Popular Gear tab -->
+    @if (activeTab() === 'gear') {
+      <div class="space-y-3">
+
+        @for (entry of popularBySlot(); track entry[0]) {
+          <div class="bg-surface rounded-lg border border-border overflow-hidden">
+            <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+              <h3 class="text-xs font-semibold text-muted uppercase tracking-wider capitalize">{{ entry[0] }}</h3>
+            </div>
+            <div class="divide-y divide-border/40">
+              @for (item of entry[1]; track item.rank) {
+                <div class="px-4 py-2.5 flex items-start gap-3">
+                  <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ item.rank }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <a
+                        [href]="wowheadItem(item.item_id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm text-text hover:text-accent transition-colors"
+                      >{{ item.item_name }}</a>
+                    </div>
+                    @if (item.usage_percent != null) {
+                      <div class="mt-1.5 flex items-center gap-2">
+                        <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
+                          <div class="h-full bg-accent/50 rounded-full" [style.width]="item.usage_percent + '%'"></div>
+                        </div>
+                        <span class="text-xs text-muted w-10 text-right shrink-0 tabular-nums">{{ item.usage_percent.toFixed(1) }}%</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (craftedItems().length > 0) {
+          <div class="bg-surface rounded-lg border border-border overflow-hidden">
+            <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+              <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">Crafted Gear</h3>
+            </div>
+            <div class="divide-y divide-border/40">
+              @for (item of craftedItems(); track item.rank) {
+                <div class="px-4 py-2.5 flex items-start gap-3">
+                  <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ item.rank }}</span>
+                  <div class="flex-1 min-w-0">
+                    <a
+                      [href]="wowheadItem(item.item_id)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-text hover:text-accent transition-colors"
+                    >{{ item.item_name }}</a>
+                    @if (item.usage_percent != null) {
+                      <div class="mt-1.5 flex items-center gap-2">
+                        <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
+                          <div class="h-full bg-accent/50 rounded-full" [style.width]="item.usage_percent + '%'"></div>
+                        </div>
+                        <span class="text-xs text-muted w-10 text-right shrink-0 tabular-nums">{{ item.usage_percent.toFixed(1) }}%</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (embellishments().length > 0) {
+          <div class="bg-surface rounded-lg border border-border overflow-hidden">
+            <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+              <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">Embellishments</h3>
+            </div>
+            <div class="divide-y divide-border/40">
+              @for (item of embellishments(); track item.rank) {
+                <div class="px-4 py-2.5 flex items-start gap-3">
+                  <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ item.rank }}</span>
+                  <div class="flex-1 min-w-0">
+                    <a
+                      [href]="wowheadItem(item.item_id)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-text hover:text-accent transition-colors"
+                    >{{ item.item_name }}</a>
+                    @if (item.usage_percent != null) {
+                      <div class="mt-1.5 flex items-center gap-2">
+                        <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
+                          <div class="h-full bg-accent/50 rounded-full" [style.width]="item.usage_percent + '%'"></div>
+                        </div>
+                        <span class="text-xs text-muted w-10 text-right shrink-0 tabular-nums">{{ item.usage_percent.toFixed(1) }}%</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (popularBySlot().length === 0 && craftedItems().length === 0 && embellishments().length === 0) {
+          <p class="text-sm text-muted py-8 text-center">No gear data available for this spec.</p>
+        }
+
+      </div>
+    }
+
+    <!-- Enchants tab -->
+    @if (activeTab() === 'enchants') {
+      @if (enchantsBySlot().length > 0) {
+        <div class="space-y-3">
+          @for (entry of enchantsBySlot(); track entry[0]) {
+            <div class="bg-surface rounded-lg border border-border overflow-hidden">
+              <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+                <h3 class="text-xs font-semibold text-muted uppercase tracking-wider capitalize">{{ entry[0] }}</h3>
+              </div>
+              <div class="divide-y divide-border/40">
+                @for (enchant of entry[1]; track enchant.rank) {
+                  <div class="px-4 py-2.5 flex items-start gap-3">
+                    <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ enchant.rank }}</span>
+                    <div class="flex-1 min-w-0">
+                      <span class="text-sm text-text">{{ enchant.enchant_name }}</span>
+                      @if (enchant.usage_percent != null) {
+                        <div class="mt-1.5 flex items-center gap-2">
+                          <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
+                            <div class="h-full bg-accent/50 rounded-full" [style.width]="enchant.usage_percent + '%'"></div>
+                          </div>
+                          <span class="text-xs text-muted w-10 text-right shrink-0 tabular-nums">{{ enchant.usage_percent.toFixed(1) }}%</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-sm text-muted py-8 text-center">No enchant data available for this spec.</p>
+      }
+    }
+
+    <!-- Gems tab -->
+    @if (activeTab() === 'gems') {
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="bg-surface rounded-lg border border-border overflow-hidden">
+          <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+            <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: #A335EE">Epic Gems</h3>
+          </div>
+          @if (epicGems().length > 0) {
+            <div class="divide-y divide-border/40">
+              @for (gem of epicGems(); track gem.rank) {
+                <div class="px-4 py-2.5 flex items-start gap-3">
+                  <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ gem.rank }}</span>
+                  <div class="flex-1 min-w-0">
+                    <a
+                      [href]="wowheadItem(gem.item_id)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-text hover:text-accent transition-colors"
+                    >{{ gem.gem_name }}</a>
+                    @if (gem.usage_percent != null) {
+                      <div class="mt-1.5 flex items-center gap-2">
+                        <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
+                          <div class="h-full rounded-full" style="background: rgba(163,53,238,0.4)" [style.width]="gem.usage_percent + '%'"></div>
+                        </div>
+                        <span class="text-xs text-muted w-10 text-right shrink-0 tabular-nums">{{ gem.usage_percent.toFixed(1) }}%</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="px-4 py-4 text-sm text-muted">No data</p>
+          }
+        </div>
+
+        <div class="bg-surface rounded-lg border border-border overflow-hidden">
+          <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+            <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: #0070DD">Rare Gems</h3>
+          </div>
+          @if (rareGems().length > 0) {
+            <div class="divide-y divide-border/40">
+              @for (gem of rareGems(); track gem.rank) {
+                <div class="px-4 py-2.5 flex items-start gap-3">
+                  <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ gem.rank }}</span>
+                  <div class="flex-1 min-w-0">
+                    <a
+                      [href]="wowheadItem(gem.item_id)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-text hover:text-accent transition-colors"
+                    >{{ gem.gem_name }}</a>
+                    @if (gem.usage_percent != null) {
+                      <div class="mt-1.5 flex items-center gap-2">
+                        <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
+                          <div class="h-full rounded-full" style="background: rgba(0,112,221,0.4)" [style.width]="gem.usage_percent + '%'"></div>
+                        </div>
+                        <span class="text-xs text-muted w-10 text-right shrink-0 tabular-nums">{{ gem.usage_percent.toFixed(1) }}%</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="px-4 py-4 text-sm text-muted">No data</p>
+          }
+        </div>
+
+      </div>
+    }
+
+    <!-- Scraped at -->
+    <p class="mt-5 text-xs text-muted text-right">
+      Data from {{ snap.scraped_at | date:'d MMM yyyy, HH:mm' }}
+    </p>
+
+  }
+
+</div>

@@ -9,7 +9,7 @@ import {
   WowheadBisItem,
 } from '../../services/bis.service';
 
-type Tab = 'bis' | 'gear' | 'enchants' | 'gems';
+type Tab = 'bis' | 'gear' | 'crafted' | 'enchants' | 'gems';
 
 @Component({
   selector: 'app-bis-viewer',
@@ -26,6 +26,7 @@ export class BisViewerComponent {
   readonly tabs: { id: Tab; label: string }[] = [
     { id: 'bis', label: 'BiS Gear' },
     { id: 'gear', label: 'Popular Gear' },
+    { id: 'crafted', label: 'Crafted Gear' },
     { id: 'enchants', label: 'Enchants' },
     { id: 'gems', label: 'Gems' },
   ];

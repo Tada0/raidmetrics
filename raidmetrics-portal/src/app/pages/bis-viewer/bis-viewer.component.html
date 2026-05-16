@@ -288,11 +288,22 @@
           </div>
         }
 
-        @if (craftedItems().length > 0) {
-          <div class="bg-surface rounded-lg border border-border overflow-hidden">
-            <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
-              <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">Crafted Gear</h3>
-            </div>
+        @if (popularBySlot().length === 0) {
+          <p class="text-sm text-muted py-8 text-center">No gear data available for this spec.</p>
+        }
+
+      </div>
+    }
+
+    <!-- Crafted Gear tab -->
+    @if (activeTab() === 'crafted') {
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="bg-surface rounded-lg border border-border overflow-hidden">
+          <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+            <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">Crafted Gear</h3>
+          </div>
+          @if (craftedItems().length > 0) {
             <div class="divide-y divide-border/40">
               @for (item of craftedItems(); track item.rank) {
                 <div class="px-4 py-2.5 flex items-start gap-3">
@@ -326,14 +337,16 @@
                 </div>
               }
             </div>
-          </div>
-        }
+          } @else {
+            <p class="px-4 py-4 text-sm text-muted">No data</p>
+          }
+        </div>
 
-        @if (embellishments().length > 0) {
-          <div class="bg-surface rounded-lg border border-border overflow-hidden">
-            <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
-              <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">Embellishments</h3>
-            </div>
+        <div class="bg-surface rounded-lg border border-border overflow-hidden">
+          <div class="px-4 py-2 border-b border-border bg-surface-raised/40">
+            <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">Embellishments</h3>
+          </div>
+          @if (embellishments().length > 0) {
             <div class="divide-y divide-border/40">
               @for (item of embellishments(); track item.rank) {
                 <div class="px-4 py-2.5 flex items-start gap-3">
@@ -367,12 +380,10 @@
                 </div>
               }
             </div>
-          </div>
-        }
-
-        @if (popularBySlot().length === 0 && craftedItems().length === 0 && embellishments().length === 0) {
-          <p class="text-sm text-muted py-8 text-center">No gear data available for this spec.</p>
-        }
+          } @else {
+            <p class="px-4 py-4 text-sm text-muted">No data</p>
+          }
+        </div>
 
       </div>
     }

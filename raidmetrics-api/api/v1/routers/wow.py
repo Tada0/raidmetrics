@@ -7,8 +7,10 @@ from urllib.parse import urlparse
 logger = logging.getLogger("uvicorn.error")
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-from ...dal.models import User
+from ...dal.db import get_db
+from ...dal.models import User, WowItemIcon
 from ...dal.redis import get_redis
 from ..auth import get_current_user
 from ..battlenet import REGION, battlenet_client
@@ -277,6 +279,7 @@ async def get_character_detail(
     realm_slug: str,
     character_name: str,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Any:
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
@@ -332,19 +335,28 @@ async def get_character_detail(
                 "enchantment_id": enchant_id,
             })
 
-    # Fetch item icons concurrently, capped at 5 to avoid DNS storm on WSL/low-resource envs
     unique_ids = list({i["item_id"] for i in items if i["item_id"]})
     icon_map: dict[int, str] = {}
     if unique_ids:
-        sem = asyncio.Semaphore(5)
-        async with battlenet_client(current_user.blizzard_access_token) as client:
-            icon_results = await asyncio.gather(
-                *[_fetch_item_icon(client, sem, iid) for iid in unique_ids],
-                return_exceptions=True,
-            )
-        for r in icon_results:
-            if isinstance(r, tuple) and r[1]:
-                icon_map[r[0]] = r[1]
+        cached = db.query(WowItemIcon).filter(WowItemIcon.item_id.in_(unique_ids)).all()
+        icon_map = {row.item_id: row.icon_url for row in cached}
+
+        missing = [iid for iid in unique_ids if iid not in icon_map]
+        if missing:
+            sem = asyncio.Semaphore(5)
+            async with battlenet_client(current_user.blizzard_access_token) as client:
+                icon_results = await asyncio.gather(
+                    *[_fetch_item_icon(client, sem, iid) for iid in missing],
+                    return_exceptions=True,
+                )
+            for r in icon_results:
+                if not isinstance(r, tuple) or not r[1]:
+                    continue
+                item_id, icon_url = r
+                icon_map[item_id] = icon_url
+                db.merge(WowItemIcon(item_id=item_id, icon_url=icon_url))
+            db.commit()
+
     for item in items:
         item["icon_url"] = icon_map.get(item["item_id"])
 

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from .models import (
-    ArchonBisItem, ArchonPopularEnchant, ArchonPopularGem,
+    ArchonPopularEnchant, ArchonPopularGem,
     ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot,
 )
 from .parsers import ScrapedSpec
@@ -41,18 +41,6 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
     db.add(snapshot)
     db.flush()
 
-    for item in spec.bis_items:
-        db.add(ArchonBisItem(
-            snapshot_id=snapshot.id,
-            slot=item.slot,
-            item_id=item.item_id,
-            item_name=item.item_name,
-            is_bis=item.is_bis,
-            usage_percent=item.usage_percent,
-            gem_ids=",".join(str(g) for g in item.gem_ids) if item.gem_ids else None,
-            enchant_id=item.enchant_id,
-        ))
-
     for item in spec.popular_items:
         db.add(ArchonPopularItem(
             snapshot_id=snapshot.id,
@@ -61,6 +49,7 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
             item_id=item.item_id,
             item_name=item.item_name,
             usage_percent=item.usage_percent,
+            is_bis=item.is_bis,
             is_crafted=item.is_crafted,
             is_embellishment=item.is_embellishment,
         ))

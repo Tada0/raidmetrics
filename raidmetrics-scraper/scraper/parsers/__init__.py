@@ -2,16 +2,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-
-@dataclass
-class BisItem:
-    slot: str
-    item_id: int
-    item_name: str
-    is_bis: bool
-    usage_percent: float | None
-    gem_ids: list[int] = field(default_factory=list)
-    enchant_id: int | None = None
+_BIS_BADGE = "<BadgeLabel>BiS</BadgeLabel>"
 
 
 @dataclass
@@ -21,6 +12,7 @@ class PopularItem:
     item_id: int
     item_name: str
     usage_percent: float | None
+    is_bis: bool = False
     is_crafted: bool = False
     is_embellishment: bool = False
 
@@ -47,7 +39,6 @@ class PopularGem:
 class ScrapedSpec:
     spec_slug: str
     class_slug: str
-    bis_items: list[BisItem] = field(default_factory=list)
     popular_items: list[PopularItem] = field(default_factory=list)
     popular_enchants: list[PopularEnchant] = field(default_factory=list)
     popular_gems: list[PopularGem] = field(default_factory=list)

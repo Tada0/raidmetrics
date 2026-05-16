@@ -3,7 +3,7 @@ import logging
 import re
 
 from . import (
-    PopularItem, extract_id, extract_name, extract_slot_from_header,
+    PopularItem, _BIS_BADGE, extract_id, extract_name, extract_slot_from_header,
     extract_usage, find_component,
 )
 
@@ -47,12 +47,14 @@ def _item_from_row(row: dict, slot: str, is_crafted: bool, is_embellishment: boo
         return None
 
     usage = extract_usage(row.get("popularity", ""))
+    is_bis = _BIS_BADGE in item_jsx and not is_crafted and not is_embellishment
     return PopularItem(
         slot=slot,
         rank=rank,
         item_id=item_id,
         item_name=item_name,
         usage_percent=usage,
+        is_bis=is_bis,
         is_crafted=is_crafted,
         is_embellishment=is_embellishment,
     )

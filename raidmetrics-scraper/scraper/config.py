@@ -10,6 +10,7 @@ SPECS: list[tuple[str, str]] = [
     ("unholy", "death-knight"),
     # Demon Hunter
     ("havoc", "demon-hunter"),
+    ("devourer", "demon-hunter"),
     ("vengeance", "demon-hunter"),
     # Druid
     ("balance", "druid"),

@@ -98,9 +98,12 @@
                   <td class="px-4 py-2.5 text-xs text-muted capitalize">{{ item.slot }}</td>
                   <td class="px-4 py-2.5">
                     <div class="flex items-center gap-2">
-                      @if (item.is_bis) {
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
+                      @if (iconUrl(item.item_id); as url) {
+                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                      } @else {
+                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
                       }
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
                       <a
                         [href]="wowheadItem(item.item_id)"
                         target="_blank"
@@ -136,7 +139,12 @@
                 <div class="px-4 py-2.5 flex items-start gap-3">
                   <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ item.rank }}</span>
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      @if (iconUrl(item.item_id); as url) {
+                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                      } @else {
+                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                      }
                       <a
                         [href]="wowheadItem(item.item_id)"
                         target="_blank"
@@ -169,12 +177,19 @@
                 <div class="px-4 py-2.5 flex items-start gap-3">
                   <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ item.rank }}</span>
                   <div class="flex-1 min-w-0">
-                    <a
-                      [href]="wowheadItem(item.item_id)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-text hover:text-accent transition-colors"
-                    >{{ item.item_name }}</a>
+                    <div class="flex items-center gap-2">
+                      @if (iconUrl(item.item_id); as url) {
+                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                      } @else {
+                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                      }
+                      <a
+                        [href]="wowheadItem(item.item_id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm text-text hover:text-accent transition-colors"
+                      >{{ item.item_name }}</a>
+                    </div>
                     @if (item.usage_percent != null) {
                       <div class="mt-1.5 flex items-center gap-2">
                         <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
@@ -200,12 +215,19 @@
                 <div class="px-4 py-2.5 flex items-start gap-3">
                   <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ item.rank }}</span>
                   <div class="flex-1 min-w-0">
-                    <a
-                      [href]="wowheadItem(item.item_id)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-text hover:text-accent transition-colors"
-                    >{{ item.item_name }}</a>
+                    <div class="flex items-center gap-2">
+                      @if (iconUrl(item.item_id); as url) {
+                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                      } @else {
+                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                      }
+                      <a
+                        [href]="wowheadItem(item.item_id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm text-text hover:text-accent transition-colors"
+                      >{{ item.item_name }}</a>
+                    </div>
                     @if (item.usage_percent != null) {
                       <div class="mt-1.5 flex items-center gap-2">
                         <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
@@ -277,12 +299,19 @@
                 <div class="px-4 py-2.5 flex items-start gap-3">
                   <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ gem.rank }}</span>
                   <div class="flex-1 min-w-0">
-                    <a
-                      [href]="wowheadItem(gem.item_id)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-text hover:text-accent transition-colors"
-                    >{{ gem.gem_name }}</a>
+                    <div class="flex items-center gap-2">
+                      @if (iconUrl(gem.item_id); as url) {
+                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                      } @else {
+                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                      }
+                      <a
+                        [href]="wowheadItem(gem.item_id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm text-text hover:text-accent transition-colors"
+                      >{{ gem.gem_name }}</a>
+                    </div>
                     @if (gem.usage_percent != null) {
                       <div class="mt-1.5 flex items-center gap-2">
                         <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">
@@ -310,12 +339,19 @@
                 <div class="px-4 py-2.5 flex items-start gap-3">
                   <span class="text-xs text-border w-4 text-right shrink-0 mt-0.5">{{ gem.rank }}</span>
                   <div class="flex-1 min-w-0">
-                    <a
-                      [href]="wowheadItem(gem.item_id)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-text hover:text-accent transition-colors"
-                    >{{ gem.gem_name }}</a>
+                    <div class="flex items-center gap-2">
+                      @if (iconUrl(gem.item_id); as url) {
+                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                      } @else {
+                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                      }
+                      <a
+                        [href]="wowheadItem(gem.item_id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm text-text hover:text-accent transition-colors"
+                      >{{ gem.gem_name }}</a>
+                    </div>
                     @if (gem.usage_percent != null) {
                       <div class="mt-1.5 flex items-center gap-2">
                         <div class="flex-1 h-1 bg-surface-raised rounded-full overflow-hidden">

@@ -3,7 +3,6 @@ import { DatePipe } from '@angular/common';
 import {
   BisService,
   BisSpec,
-  BisItem,
   PopularItem,
   PopularEnchant,
   PopularGem,
@@ -76,10 +75,13 @@ export class BisViewerComponent {
     return specs.filter(s => s.class_slug === cls);
   });
 
-  readonly bisItems = computed((): BisItem[] => {
+  readonly bisItems = computed((): PopularItem[] => {
     const snap = this.bis.snapshot();
     if (!snap) return [];
-    return this._sortBySlot(snap.bis_items, i => i.slot);
+    return this._sortBySlot(
+      snap.popular_items.filter(i => i.is_bis),
+      i => i.slot,
+    );
   });
 
   readonly popularBySlot = computed((): [string, PopularItem[]][] => {
@@ -136,6 +138,10 @@ export class BisViewerComponent {
 
   wowheadItem(itemId: number): string {
     return `https://www.wowhead.com/item=${itemId}`;
+  }
+
+  iconUrl(itemId: number): string | null {
+    return this.bis.icons().get(itemId) ?? null;
   }
 
   private _slotRank(slot: string): number {

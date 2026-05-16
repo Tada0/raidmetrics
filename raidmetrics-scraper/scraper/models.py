@@ -35,9 +35,6 @@ class ArchonSpecSnapshot(Base):
     scraped_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     run = relationship("ArchonScrapeRun", back_populates="snapshots")
-    bis_items = relationship(
-        "ArchonBisItem", back_populates="snapshot", cascade="all, delete-orphan"
-    )
     popular_items = relationship(
         "ArchonPopularItem", back_populates="snapshot", cascade="all, delete-orphan"
     )
@@ -51,23 +48,6 @@ class ArchonSpecSnapshot(Base):
     __table_args__ = (UniqueConstraint("run_id", "spec_slug", "class_slug"),)
 
 
-class ArchonBisItem(Base):
-    """Best-in-slot item per slot, from the Archon overview page."""
-    __tablename__ = "archon_bis_items"
-
-    id = Column(Integer, primary_key=True)
-    snapshot_id = Column(Integer, ForeignKey("archon_spec_snapshots.id"), nullable=False)
-    slot = Column(String, nullable=False)
-    item_id = Column(Integer, nullable=False)
-    item_name = Column(String, nullable=False)
-    is_bis = Column(Boolean, nullable=False, default=False)
-    usage_percent = Column(Float, nullable=True)
-    gem_ids = Column(String, nullable=True)   # comma-separated item IDs, e.g. "100,200"
-    enchant_id = Column(Integer, nullable=True)
-
-    snapshot = relationship("ArchonSpecSnapshot", back_populates="bis_items")
-
-
 class ArchonPopularItem(Base):
     """Most-used items per slot, from gear-and-tier-set."""
     __tablename__ = "archon_popular_items"
@@ -79,6 +59,7 @@ class ArchonPopularItem(Base):
     item_id = Column(Integer, nullable=False)
     item_name = Column(String, nullable=False)
     usage_percent = Column(Float, nullable=True)
+    is_bis = Column(Boolean, nullable=False, default=False)
     is_crafted = Column(Boolean, nullable=False, default=False)
     is_embellishment = Column(Boolean, nullable=False, default=False)
 

@@ -8,22 +8,13 @@ export interface BisSpec {
   class_name: string;
 }
 
-export interface BisItem {
-  slot: string;
-  item_id: number;
-  item_name: string;
-  is_bis: boolean;
-  usage_percent: number | null;
-  gem_ids: string | null;
-  enchant_id: number | null;
-}
-
 export interface PopularItem {
   slot: string;
   rank: number;
   item_id: number;
   item_name: string;
   usage_percent: number | null;
+  is_bis: boolean;
   is_crafted: boolean;
   is_embellishment: boolean;
 }
@@ -48,7 +39,6 @@ export interface BisSnapshot {
   spec_slug: string;
   class_slug: string;
   scraped_at: string;
-  bis_items: BisItem[];
   popular_items: PopularItem[];
   popular_enchants: PopularEnchant[];
   popular_gems: PopularGem[];
@@ -60,6 +50,7 @@ export class BisService {
 
   readonly specs = signal<BisSpec[] | null>(null);
   readonly snapshot = signal<BisSnapshot | null>(null);
+  readonly icons = signal<Map<number, string>>(new Map());
   readonly loading = signal(false);
 
   loadSpecs(): void {
@@ -72,14 +63,35 @@ export class BisService {
   loadSnapshot(specSlug: string, classSlug: string): void {
     this.loading.set(true);
     this.snapshot.set(null);
+    this.icons.set(new Map());
     this.http.get<BisSnapshot>('/api/v1/bis/snapshot', {
       params: { spec: specSlug, class: classSlug },
     }).subscribe({
       next: s => {
         this.snapshot.set(s);
         this.loading.set(false);
+        const ids = [...new Set([
+          ...s.popular_items.map(i => i.item_id),
+          ...s.popular_gems.map(g => g.item_id),
+        ])];
+        if (ids.length) this._loadIcons(ids);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  private _loadIcons(itemIds: number[]): void {
+    this.http.get<Record<string, string>>('/api/v1/bis/item-icons', {
+      params: { ids: itemIds.join(',') },
+    }).subscribe({
+      next: map => {
+        const m = new Map<number, string>();
+        for (const [id, url] of Object.entries(map)) {
+          if (url) m.set(Number(id), url);
+        }
+        this.icons.set(m);
+      },
+      error: () => {},
     });
   }
 }

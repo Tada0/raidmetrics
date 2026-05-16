@@ -7,6 +7,13 @@ from sqlalchemy.orm import declarative_base, relationship
 Base = declarative_base()
 
 
+class WowItemIcon(Base):
+    __tablename__ = "wow_item_icons"
+    item_id = Column(Integer, primary_key=True)
+    icon_url = Column(String, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)

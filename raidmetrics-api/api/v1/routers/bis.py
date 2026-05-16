@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -5,7 +7,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ...dal.db import get_db
+from ...dal.models import User, WowItemIcon
 from ..auth import get_current_user
+from ..battlenet import REGION, battlenet_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["BiS"])
 
@@ -60,15 +66,8 @@ async def get_snapshot(
 
     sid = snapshot.id
 
-    bis = db.execute(text("""
-        SELECT slot, item_id, item_name, is_bis, usage_percent, gem_ids, enchant_id
-        FROM archon_bis_items
-        WHERE snapshot_id = :sid
-        ORDER BY slot
-    """), {"sid": sid}).fetchall()
-
     popular = db.execute(text("""
-        SELECT slot, rank, item_id, item_name, usage_percent, is_crafted, is_embellishment
+        SELECT slot, rank, item_id, item_name, usage_percent, is_bis, is_crafted, is_embellishment
         FROM archon_popular_items
         WHERE snapshot_id = :sid
         ORDER BY slot, rank
@@ -92,8 +91,61 @@ async def get_snapshot(
         "spec_slug": snapshot.spec_slug,
         "class_slug": snapshot.class_slug,
         "scraped_at": snapshot.scraped_at,
-        "bis_items": [dict(r._mapping) for r in bis],
         "popular_items": [dict(r._mapping) for r in popular],
         "popular_enchants": [dict(r._mapping) for r in enchants],
         "popular_gems": [dict(r._mapping) for r in gems],
     }
+
+
+async def _fetch_icon(client, sem: asyncio.Semaphore, item_id: int) -> tuple[int, str | None]:
+    async with sem:
+        try:
+            r = await client.get(
+                f"/data/wow/media/item/{item_id}",
+                params={"namespace": f"static-{REGION}"},
+            )
+            for asset in r.json().get("assets", []):
+                if asset.get("key") == "icon":
+                    return item_id, asset["value"]
+        except Exception as e:
+            logger.warning("Icon fetch failed for item %s: %s", item_id, e)
+    return item_id, None
+
+
+@router.get("/item-icons")
+async def get_item_icons(
+    ids: str = Query(..., description="Comma-separated item IDs"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    item_ids = list({int(x) for x in ids.split(",") if x.strip().isdigit()})
+    if not item_ids:
+        return {}
+
+    # Pull whatever is already cached in the DB
+    cached = db.query(WowItemIcon).filter(WowItemIcon.item_id.in_(item_ids)).all()
+    result: dict[int, str] = {row.item_id: row.icon_url for row in cached}
+
+    missing = [iid for iid in item_ids if iid not in result]
+    if missing and current_user.blizzard_access_token:
+        sem = asyncio.Semaphore(5)
+        try:
+            async with battlenet_client(current_user.blizzard_access_token) as client:
+                fetched = await asyncio.gather(
+                    *[_fetch_icon(client, sem, iid) for iid in missing],
+                    return_exceptions=True,
+                )
+        except HTTPException:
+            fetched = []
+
+        for entry in fetched:
+            if not isinstance(entry, tuple):
+                continue
+            item_id, icon_url = entry
+            if not icon_url:
+                continue
+            result[item_id] = icon_url
+            db.merge(WowItemIcon(item_id=item_id, icon_url=icon_url))
+        db.commit()
+
+    return result

@@ -8,7 +8,6 @@ from .db import get_session, init_db
 from .parsers import ScrapedSpec
 from .parsers.enchants import parse_enchants_gems
 from .parsers.gear import parse_gear
-from .parsers.overview import parse_overview
 from .storage import create_run, finish_run, prune_old_runs, save_spec
 
 logger = logging.getLogger(__name__)
@@ -23,8 +22,7 @@ async def _scrape_spec(
     async with sem:
         logger.info("Scraping %s/%s", spec_slug, class_slug)
         try:
-            overview_data, gear_data, enchants_data = await asyncio.gather(
-                client.fetch_page(spec_slug, class_slug, "overview"),
+            gear_data, enchants_data = await asyncio.gather(
                 client.fetch_page(spec_slug, class_slug, "gear-and-tier-set"),
                 client.fetch_page(spec_slug, class_slug, "enchants-and-gems"),
             )
@@ -32,19 +30,18 @@ async def _scrape_spec(
             logger.error("Failed %s/%s: %s", spec_slug, class_slug, exc)
             return None
 
-        bis_items = parse_overview(overview_data)
         popular_items = parse_gear(gear_data)
         enchants, gems = parse_enchants_gems(enchants_data)
 
+        bis_count = sum(1 for i in popular_items if i.is_bis)
         logger.info(
             "%s/%s — %d BiS, %d popular, %d enchants, %d gems",
             spec_slug, class_slug,
-            len(bis_items), len(popular_items), len(enchants), len(gems),
+            bis_count, len(popular_items), len(enchants), len(gems),
         )
         return ScrapedSpec(
             spec_slug=spec_slug,
             class_slug=class_slug,
-            bis_items=bis_items,
             popular_items=popular_items,
             popular_enchants=enchants,
             popular_gems=gems,

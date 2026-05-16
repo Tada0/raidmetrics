@@ -42,7 +42,7 @@
           <div class="flex gap-6 items-start">
 
             <!-- Left items (right-aligned, icon on right edge) -->
-            <div class="flex flex-col gap-2 w-52 shrink-0">
+            <div class="flex flex-col gap-2 w-44 shrink-0">
               @for (item of leftItems(); track $index) {
                 @if (item) {
                   <a
@@ -73,7 +73,7 @@
             </div>
 
             <!-- Center: character image + ilvl -->
-            <div class="flex flex-col items-center gap-4 w-80 shrink-0">
+            <div class="flex flex-col items-center gap-4 w-[600px] shrink-0">
               @if (d.main_raw_url) {
                 <img
                   [src]="d.main_raw_url"
@@ -93,7 +93,7 @@
             </div>
 
             <!-- Right items (left-aligned, icon on left edge) -->
-            <div class="flex flex-col gap-2 w-52 shrink-0">
+            <div class="flex flex-col gap-2 w-44 shrink-0">
               @for (item of rightItems(); track $index) {
                 @if (item) {
                   <a

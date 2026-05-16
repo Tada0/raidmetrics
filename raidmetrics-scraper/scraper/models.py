@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey, Integer, String,
+    Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String,
     UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base, relationship
@@ -55,6 +55,7 @@ class ArchonSpecSnapshot(Base):
 class ArchonPopularItem(Base):
     """Most-used items per slot, from gear-and-tier-set."""
     __tablename__ = "archon_popular_items"
+    __table_args__ = (Index("ix_popular_items_snapshot_id", "snapshot_id"),)
 
     id = Column(Integer, primary_key=True)
     snapshot_id = Column(Integer, ForeignKey("archon_spec_snapshots.id"), nullable=False)
@@ -63,7 +64,6 @@ class ArchonPopularItem(Base):
     item_id = Column(Integer, nullable=False)
     item_name = Column(String, nullable=False)
     usage_percent = Column(Float, nullable=True)
-    is_bis = Column(Boolean, nullable=False, default=False)
     is_crafted = Column(Boolean, nullable=False, default=False)
     is_embellishment = Column(Boolean, nullable=False, default=False)
 
@@ -73,11 +73,11 @@ class ArchonPopularItem(Base):
 class WowheadBisItem(Base):
     """BiS items from WoWhead guides, one row per slot per spec snapshot."""
     __tablename__ = "wowhead_bis_items"
+    __table_args__ = (Index("ix_wowhead_bis_snapshot_id", "snapshot_id"),)
 
     id = Column(Integer, primary_key=True)
     snapshot_id = Column(Integer, ForeignKey("archon_spec_snapshots.id"), nullable=False)
     slot = Column(String, nullable=False)
-    rank = Column(Integer, nullable=False, default=1)
     item_id = Column(Integer, nullable=False)
     item_name = Column(String, nullable=False, default="")
 
@@ -87,6 +87,7 @@ class WowheadBisItem(Base):
 class ArchonPopularEnchant(Base):
     """Most-used enchants per slot, from enchants-and-gems."""
     __tablename__ = "archon_popular_enchants"
+    __table_args__ = (Index("ix_popular_enchants_snapshot_id", "snapshot_id"),)
 
     id = Column(Integer, primary_key=True)
     snapshot_id = Column(Integer, ForeignKey("archon_spec_snapshots.id"), nullable=False)
@@ -102,6 +103,7 @@ class ArchonPopularEnchant(Base):
 class ArchonPopularGem(Base):
     """Most-used gems (epic / rare), from enchants-and-gems."""
     __tablename__ = "archon_popular_gems"
+    __table_args__ = (Index("ix_popular_gems_snapshot_id", "snapshot_id"),)
 
     id = Column(Integer, primary_key=True)
     snapshot_id = Column(Integer, ForeignKey("archon_spec_snapshots.id"), nullable=False)

@@ -2,8 +2,6 @@ import json
 import re
 from dataclasses import dataclass, field
 
-_BIS_BADGE = "<BadgeLabel>BiS</BadgeLabel>"
-
 
 @dataclass
 class PopularItem:
@@ -12,7 +10,6 @@ class PopularItem:
     item_id: int
     item_name: str
     usage_percent: float | None
-    is_bis: bool = False
     is_crafted: bool = False
     is_embellishment: bool = False
 
@@ -38,7 +35,6 @@ class PopularGem:
 @dataclass
 class WowheadBisItem:
     slot: str
-    rank: int
     item_id: int
     item_name: str
 

@@ -67,7 +67,7 @@ async def get_snapshot(
     sid = snapshot.id
 
     popular = db.execute(text("""
-        SELECT slot, rank, item_id, item_name, usage_percent, is_bis, is_crafted, is_embellishment
+        SELECT slot, rank, item_id, item_name, usage_percent, is_crafted, is_embellishment
         FROM archon_popular_items
         WHERE snapshot_id = :sid
         ORDER BY slot, rank
@@ -88,7 +88,7 @@ async def get_snapshot(
     """), {"sid": sid}).fetchall()
 
     wowhead_bis = db.execute(text("""
-        SELECT slot, rank, item_id, item_name
+        SELECT slot, item_id, item_name
         FROM wowhead_bis_items
         WHERE snapshot_id = :sid
         ORDER BY id

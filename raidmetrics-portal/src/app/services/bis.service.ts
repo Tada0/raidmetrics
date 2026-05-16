@@ -14,7 +14,6 @@ export interface PopularItem {
   item_id: number;
   item_name: string;
   usage_percent: number | null;
-  is_bis: boolean;
   is_crafted: boolean;
   is_embellishment: boolean;
 }
@@ -37,7 +36,6 @@ export interface PopularGem {
 
 export interface WowheadBisItem {
   slot: string;
-  rank: number;
   item_id: number;
   item_name: string;
 }

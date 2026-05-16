@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -49,7 +49,6 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
             item_id=item.item_id,
             item_name=item.item_name,
             usage_percent=item.usage_percent,
-            is_bis=item.is_bis,
             is_crafted=item.is_crafted,
             is_embellishment=item.is_embellishment,
         ))
@@ -78,7 +77,6 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
         db.add(WowheadBisItem(
             snapshot_id=snapshot.id,
             slot=bis.slot,
-            rank=bis.rank,
             item_id=bis.item_id,
             item_name=bis.item_name,
         ))
@@ -89,15 +87,26 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
 
 
 def prune_old_runs(db: Session):
-    """Delete runs beyond the most recent RUNS_TO_KEEP successful ones."""
-    old_runs = (
+    """Delete runs beyond the most recent RUNS_TO_KEEP successful ones, and failed runs older than 24h."""
+    old_successful = (
         db.query(ArchonScrapeRun)
         .filter(ArchonScrapeRun.success == True)
         .order_by(ArchonScrapeRun.completed_at.desc())
         .offset(RUNS_TO_KEEP)
         .all()
     )
-    for run in old_runs:
-        logger.info("Pruning run %d (%s)", run.id, run.completed_at)
+    for run in old_successful:
+        logger.info("Pruning old run %d (%s)", run.id, run.completed_at)
         db.delete(run)
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    old_failed = (
+        db.query(ArchonScrapeRun)
+        .filter(ArchonScrapeRun.success == False, ArchonScrapeRun.started_at < cutoff)
+        .all()
+    )
+    for run in old_failed:
+        logger.info("Pruning failed run %d (%s)", run.id, run.started_at)
+        db.delete(run)
+
     db.commit()

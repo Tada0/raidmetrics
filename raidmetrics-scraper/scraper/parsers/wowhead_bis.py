@@ -232,11 +232,13 @@ async def fetch_wowhead_bis(
 
     items = []
     for slot, item_id in rows:
+        name = names.get(item_id, "")
+        if not name:
+            logger.warning("No name resolved for item %d in %s/%s", item_id, spec_slug, class_slug)
         items.append(WowheadBisItem(
             slot=slot,
-            rank=1,
             item_id=item_id,
-            item_name=names.get(item_id, ""),
+            item_name=name,
         ))
 
     logger.info(

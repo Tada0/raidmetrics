@@ -49,6 +49,7 @@ export class RaidRosterComponent {
   readonly guildMembersLoading = signal(false);
   readonly saving = signal<Difficulty | null>(null);
   readonly saveError = signal<string | null>(null);
+  readonly saveSuccess = signal<Difficulty | null>(null);
   readonly refreshingRoster = signal(false);
 
   readonly rosters = signal<RostersState>({ normal: [], heroic: [], mythic: [] });
@@ -126,12 +127,15 @@ export class RaidRosterComponent {
     if (!char?.guild_id) return;
     this.saving.set(difficulty);
     this.saveError.set(null);
+    this.saveSuccess.set(null);
     const members = this.rosters()[difficulty].map((m, i) => ({ ...m, sort_order: i }));
     this.raidRosterSvc.updateRoster(char.guild_id, difficulty, members).subscribe({
       next: ({ members: saved }) => {
         const current = this.rosters();
         this.rosters.set({ ...current, [difficulty]: saved });
         this.saving.set(null);
+        this.saveSuccess.set(difficulty);
+        setTimeout(() => this.saveSuccess.set(null), 3000);
       },
       error: () => {
         this.saving.set(null);

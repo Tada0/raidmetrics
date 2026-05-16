@@ -61,19 +61,23 @@
               </span>
             </p>
             @if (canEdit()) {
-              <button
-                (click)="saveRoster(activeTab())"
-                [disabled]="saving() === activeTab()"
-                class="px-3 py-1 rounded-lg text-xs font-medium bg-accent hover:bg-accent-hover text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {{ saving() === activeTab() ? 'Saving…' : 'Save Roster' }}
-              </button>
+              <div class="flex items-center gap-3">
+                @if (saveError()) {
+                  <p class="text-danger text-xs">{{ saveError() }}</p>
+                }
+                @if (saveSuccess() === activeTab()) {
+                  <p class="text-green-400 text-xs">Roster saved successfully.</p>
+                }
+                <button
+                  (click)="saveRoster(activeTab())"
+                  [disabled]="saving() === activeTab()"
+                  class="px-3 py-1 rounded-lg text-xs font-medium bg-accent hover:bg-accent-hover text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {{ saving() === activeTab() ? 'Saving…' : 'Save Roster' }}
+                </button>
+              </div>
             }
           </div>
-
-          @if (saveError()) {
-            <p class="text-danger text-xs mb-3">{{ saveError() }}</p>
-          }
 
           @if (rosters()[activeTab()].length === 0) {
             <div class="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-xl">

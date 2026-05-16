@@ -119,7 +119,6 @@
                           } @else {
                             <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
                           }
-                          <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
                           <a
                             [href]="wowheadItem(item.item_id)"
                             target="_blank"
@@ -153,7 +152,6 @@
                           } @else {
                             <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
                           }
-                          <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
                           <a
                             [href]="wowheadItem(item.item_id)"
                             target="_blank"
@@ -187,7 +185,6 @@
                           } @else {
                             <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
                           }
-                          <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
                           <a
                             [href]="wowheadItem(item.item_id)"
                             target="_blank"
@@ -226,7 +223,6 @@
                           } @else {
                             <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
                           }
-                          <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
                           <a
                             [href]="wowheadItem(item.item_id)"
                             target="_blank"
@@ -266,6 +262,9 @@
                         <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
                       } @else {
                         <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                      }
+                      @if (bisItemIds().has(item.item_id)) {
+                        <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
                       }
                       <a
                         [href]="wowheadItem(item.item_id)"

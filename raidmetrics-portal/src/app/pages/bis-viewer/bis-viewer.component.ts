@@ -125,6 +125,11 @@ export class BisViewerComponent {
     return this._sortBySlot(snap.wowhead_bis_items, i => i.slot);
   });
 
+  readonly bisItemIds = computed((): Set<number> => {
+    const snap = this.bis.snapshot();
+    return snap ? new Set(snap.wowhead_bis_items.map(i => i.item_id)) : new Set();
+  });
+
   readonly bisArmorItems = computed(() =>
     this.bisItems().filter(i => !this.WEAPON_SLOTS.has(i.slot) && i.slot !== 'ring' && i.slot !== 'trinket')
   );

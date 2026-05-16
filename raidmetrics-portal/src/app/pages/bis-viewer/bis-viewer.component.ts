@@ -3,9 +3,10 @@ import { DatePipe } from '@angular/common';
 import {
   BisService,
   BisSpec,
-  PopularItem,
   PopularEnchant,
   PopularGem,
+  PopularItem,
+  WowheadBisItem,
 } from '../../services/bis.service';
 
 type Tab = 'bis' | 'gear' | 'enchants' | 'gems';
@@ -89,12 +90,10 @@ export class BisViewerComponent {
   };
 
   private readonly SLOT_ORDER = [
-    'head', 'neck', 'shoulder', 'shoulders', 'back', 'cloak',
+    'head', 'neck', 'shoulder', 'shoulders', 'back',
     'chest', 'wrist', 'wrists', 'hands', 'waist', 'legs', 'feet',
-    'ring 1', 'ring 2', 'finger 1', 'finger 2',
-    'trinket 1', 'trinket 2',
-    'main hand', 'main-hand', 'off hand', 'off-hand',
-    'ranged', 'two-hand', 'two hand',
+    'ring', 'trinket',
+    'main-hand', 'off-hand', 'ranged', 'two-hand',
   ];
 
   readonly classes = computed(() => {
@@ -118,13 +117,35 @@ export class BisViewerComponent {
     return specs.filter(s => s.class_slug === cls);
   });
 
-  readonly bisItems = computed((): PopularItem[] => {
+  private readonly WEAPON_SLOTS = new Set(['two-hand', 'main-hand', 'off-hand', 'ranged']);
+
+  readonly bisItems = computed((): WowheadBisItem[] => {
     const snap = this.bis.snapshot();
     if (!snap) return [];
-    return this._sortBySlot(
-      snap.popular_items.filter(i => i.is_bis),
-      i => i.slot,
-    );
+    return this._sortBySlot(snap.wowhead_bis_items, i => i.slot);
+  });
+
+  readonly bisArmorItems = computed(() =>
+    this.bisItems().filter(i => !this.WEAPON_SLOTS.has(i.slot) && i.slot !== 'ring' && i.slot !== 'trinket')
+  );
+
+  readonly bisRingItems = computed(() =>
+    this.bisItems().filter(i => i.slot === 'ring')
+  );
+
+  readonly bisTrinketItems = computed(() =>
+    this.bisItems().filter(i => i.slot === 'trinket')
+  );
+
+  readonly bisWeaponItems = computed(() =>
+    this.bisItems().filter(i => this.WEAPON_SLOTS.has(i.slot))
+  );
+
+  readonly hasMultipleWeaponTypes = computed(() => {
+    const weapons = this.bisWeaponItems();
+    const has2H = weapons.some(i => i.slot === 'two-hand');
+    const has1H = weapons.some(i => i.slot === 'main-hand' || i.slot === 'off-hand');
+    return has2H && has1H;
   });
 
   readonly popularBySlot = computed((): [string, PopularItem[]][] => {

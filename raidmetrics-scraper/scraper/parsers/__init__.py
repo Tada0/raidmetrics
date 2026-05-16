@@ -36,12 +36,21 @@ class PopularGem:
 
 
 @dataclass
+class WowheadBisItem:
+    slot: str
+    rank: int
+    item_id: int
+    item_name: str
+
+
+@dataclass
 class ScrapedSpec:
     spec_slug: str
     class_slug: str
     popular_items: list[PopularItem] = field(default_factory=list)
     popular_enchants: list[PopularEnchant] = field(default_factory=list)
     popular_gems: list[PopularGem] = field(default_factory=list)
+    wowhead_bis_items: list[WowheadBisItem] = field(default_factory=list)
 
 
 # ── Section helpers ──────────────────────────────────────────────────────────

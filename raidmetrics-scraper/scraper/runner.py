@@ -2,29 +2,35 @@
 import asyncio
 import logging
 
+import httpx
+
 from .client import ArchonClient
 from .config import CONCURRENT_SPECS, SPECS
 from .db import get_session, init_db
 from .parsers import ScrapedSpec
 from .parsers.enchants import parse_enchants_gems
 from .parsers.gear import parse_gear
+from .parsers.wowhead_bis import fetch_wowhead_bis
 from .storage import create_run, finish_run, prune_old_runs, save_spec
 
 logger = logging.getLogger(__name__)
 
 
 async def _scrape_spec(
-    client: ArchonClient,
+    archon: ArchonClient,
+    wowhead: httpx.AsyncClient,
     spec_slug: str,
     class_slug: str,
     sem: asyncio.Semaphore,
+    wowhead_sem: asyncio.Semaphore,
 ) -> ScrapedSpec | None:
     async with sem:
         logger.info("Scraping %s/%s", spec_slug, class_slug)
         try:
-            gear_data, enchants_data = await asyncio.gather(
-                client.fetch_page(spec_slug, class_slug, "gear-and-tier-set"),
-                client.fetch_page(spec_slug, class_slug, "enchants-and-gems"),
+            gear_data, enchants_data, bis_items = await asyncio.gather(
+                archon.fetch_page(spec_slug, class_slug, "gear-and-tier-set"),
+                archon.fetch_page(spec_slug, class_slug, "enchants-and-gems"),
+                fetch_wowhead_bis(spec_slug, class_slug, wowhead, wowhead_sem),
             )
         except Exception as exc:
             logger.error("Failed %s/%s: %s", spec_slug, class_slug, exc)
@@ -33,11 +39,10 @@ async def _scrape_spec(
         popular_items = parse_gear(gear_data)
         enchants, gems = parse_enchants_gems(enchants_data)
 
-        bis_count = sum(1 for i in popular_items if i.is_bis)
         logger.info(
-            "%s/%s — %d BiS, %d popular, %d enchants, %d gems",
+            "%s/%s — %d WoWhead BiS, %d popular, %d enchants, %d gems",
             spec_slug, class_slug,
-            bis_count, len(popular_items), len(enchants), len(gems),
+            len(bis_items), len(popular_items), len(enchants), len(gems),
         )
         return ScrapedSpec(
             spec_slug=spec_slug,
@@ -45,6 +50,7 @@ async def _scrape_spec(
             popular_items=popular_items,
             popular_enchants=enchants,
             popular_gems=gems,
+            wowhead_bis_items=bis_items,
         )
 
 
@@ -62,9 +68,16 @@ async def run_scrape(specs: list[tuple[str, str]] | None = None, dry_run: bool =
     try:
         failed = 0
         sem = asyncio.Semaphore(CONCURRENT_SPECS)
-        async with ArchonClient() as client:
+        wowhead_sem = asyncio.Semaphore(1)  # one WoWhead guide fetch at a time
+        async with (
+            ArchonClient() as archon,
+            httpx.AsyncClient(
+                headers={"User-Agent": "Mozilla/5.0 (compatible; raidmetrics-scraper/1.0)"},
+                follow_redirects=True,
+            ) as wowhead,
+        ):
             tasks = [
-                asyncio.create_task(_scrape_spec(client, spec, cls, sem))
+                asyncio.create_task(_scrape_spec(archon, wowhead, spec, cls, sem, wowhead_sem))
                 for spec, cls in specs
             ]
             for coro in asyncio.as_completed(tasks):

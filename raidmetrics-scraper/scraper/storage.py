@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .models import (
     ArchonPopularEnchant, ArchonPopularGem,
-    ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot,
+    ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot, WowheadBisItem,
 )
 from .parsers import ScrapedSpec
 
@@ -72,6 +72,15 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
             item_id=gem.item_id,
             gem_name=gem.gem_name,
             usage_percent=gem.usage_percent,
+        ))
+
+    for bis in spec.wowhead_bis_items:
+        db.add(WowheadBisItem(
+            snapshot_id=snapshot.id,
+            slot=bis.slot,
+            rank=bis.rank,
+            item_id=bis.item_id,
+            item_name=bis.item_name,
         ))
 
     run.specs_scraped += 1

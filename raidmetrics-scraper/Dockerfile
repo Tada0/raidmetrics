@@ -1,10 +1,23 @@
-FROM python:3.10-slim
+FROM python:3.10-slim AS base
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY main.py .
+COPY scraper ./scraper
 
-CMD ["uvicorn", "scraper.service:app", "--host", "0.0.0.0", "--port", "8001"]
+# =============================
+# Development Image
+# =============================
+
+FROM base AS dev
+ENTRYPOINT ["python3", "main.py"]
+
+# =============================
+# Production Image
+# =============================
+
+FROM base AS prod
+ENTRYPOINT ["python3", "main.py"]

@@ -87,6 +87,13 @@ async def get_snapshot(
         ORDER BY gem_quality DESC, rank
     """), {"sid": sid}).fetchall()
 
+    wowhead_bis = db.execute(text("""
+        SELECT slot, rank, item_id, item_name
+        FROM wowhead_bis_items
+        WHERE snapshot_id = :sid
+        ORDER BY id
+    """), {"sid": sid}).fetchall()
+
     return {
         "spec_slug": snapshot.spec_slug,
         "class_slug": snapshot.class_slug,
@@ -94,6 +101,7 @@ async def get_snapshot(
         "popular_items": [dict(r._mapping) for r in popular],
         "popular_enchants": [dict(r._mapping) for r in enchants],
         "popular_gems": [dict(r._mapping) for r in gems],
+        "wowhead_bis_items": [dict(r._mapping) for r in wowhead_bis],
     }
 
 

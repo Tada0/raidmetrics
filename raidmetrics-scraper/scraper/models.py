@@ -47,6 +47,10 @@ class ArchonSpecSnapshot(Base):
 
     __table_args__ = (UniqueConstraint("run_id", "spec_slug", "class_slug"),)
 
+    wowhead_bis_items = relationship(
+        "WowheadBisItem", back_populates="snapshot", cascade="all, delete-orphan"
+    )
+
 
 class ArchonPopularItem(Base):
     """Most-used items per slot, from gear-and-tier-set."""
@@ -64,6 +68,20 @@ class ArchonPopularItem(Base):
     is_embellishment = Column(Boolean, nullable=False, default=False)
 
     snapshot = relationship("ArchonSpecSnapshot", back_populates="popular_items")
+
+
+class WowheadBisItem(Base):
+    """BiS items from WoWhead guides, one row per slot per spec snapshot."""
+    __tablename__ = "wowhead_bis_items"
+
+    id = Column(Integer, primary_key=True)
+    snapshot_id = Column(Integer, ForeignKey("archon_spec_snapshots.id"), nullable=False)
+    slot = Column(String, nullable=False)
+    rank = Column(Integer, nullable=False, default=1)
+    item_id = Column(Integer, nullable=False)
+    item_name = Column(String, nullable=False, default="")
+
+    snapshot = relationship("ArchonSpecSnapshot", back_populates="wowhead_bis_items")
 
 
 class ArchonPopularEnchant(Base):

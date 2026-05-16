@@ -35,6 +35,13 @@ export interface PopularGem {
   usage_percent: number | null;
 }
 
+export interface WowheadBisItem {
+  slot: string;
+  rank: number;
+  item_id: number;
+  item_name: string;
+}
+
 export interface BisSnapshot {
   spec_slug: string;
   class_slug: string;
@@ -42,6 +49,7 @@ export interface BisSnapshot {
   popular_items: PopularItem[];
   popular_enchants: PopularEnchant[];
   popular_gems: PopularGem[];
+  wowhead_bis_items: WowheadBisItem[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -73,6 +81,7 @@ export class BisService {
         const ids = [...new Set([
           ...s.popular_items.map(i => i.item_id),
           ...s.popular_gems.map(g => g.item_id),
+          ...s.wowhead_bis_items.map(i => i.item_id),
         ])];
         if (ids.length) this._loadIcons(ids);
       },

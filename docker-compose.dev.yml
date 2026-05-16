@@ -58,9 +58,13 @@ services:
     container_name: raidmetrics-scraper
     build:
       context: ./raidmetrics-scraper
+      target: dev
+    volumes:
+      - ./raidmetrics-scraper/scraper:/app/scraper
     environment:
       - DATABASE_URL=postgresql://${RAIDMETRICS_DB_USER}:${RAIDMETRICS_DB_PASSWORD}@db:5432/${RAIDMETRICS_DB_NAME}
       - SCRAPE_SCHEDULE=${SCRAPE_SCHEDULE:-0 3 * * *}
+      - RAIDMETRICS_SCRAPER_RELOAD=true
     depends_on:
       db:
         condition: service_healthy

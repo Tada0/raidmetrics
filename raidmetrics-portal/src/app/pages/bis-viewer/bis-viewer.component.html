@@ -17,32 +17,46 @@
   @if (classes().length > 0) {
 
     <!-- Class selector -->
-    <div class="flex flex-wrap gap-1.5 mb-3">
+    <div class="flex justify-center gap-1.5 mb-4">
       @for (cls of classes(); track cls.class_slug) {
         <button
           (click)="selectClass(cls.class_slug)"
-          class="px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors"
+          class="group flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all w-[64px] shrink-0"
           [class]="selectedClass() === cls.class_slug
-            ? 'bg-surface-raised border-border'
-            : 'bg-surface border-transparent text-muted hover:bg-surface-raised hover:text-text'"
-          [style.color]="selectedClass() === cls.class_slug ? classColor(cls.class_slug) : ''"
+            ? 'bg-surface-raised border-border/70'
+            : 'bg-surface border-transparent hover:bg-surface-raised'"
         >
-          {{ cls.class_name }}
+          <img
+            [src]="classIconUrl(cls.class_slug)"
+            [alt]="cls.class_name"
+            class="w-9 h-9 rounded-lg object-cover transition-opacity"
+            [class]="selectedClass() === cls.class_slug ? 'opacity-100' : 'opacity-45 group-hover:opacity-70'"
+          >
+          <span
+            class="text-[10px] font-medium leading-tight text-center transition-colors"
+            [class]="selectedClass() === cls.class_slug ? '' : 'text-muted group-hover:text-text'"
+            [style.color]="selectedClass() === cls.class_slug ? classColor(cls.class_slug) : ''"
+          >{{ cls.class_name }}</span>
         </button>
       }
     </div>
 
     <!-- Spec selector -->
     @if (selectedClass()) {
-      <div class="flex flex-wrap gap-1.5 mb-6">
+      <div class="flex flex-wrap justify-center gap-2 mb-7">
         @for (spec of specsForClass(); track spec.spec_slug) {
           <button
             (click)="selectSpec(spec)"
-            class="px-3 py-1 rounded-md text-sm border transition-colors"
+            class="flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
             [class]="selectedSpec() === spec.spec_slug
-              ? 'bg-accent/10 border-accent/30 text-accent font-medium'
-              : 'bg-surface border-transparent text-muted hover:bg-surface-raised hover:text-text'"
+              ? 'bg-surface-raised border-border/60'
+              : 'border-transparent text-muted hover:bg-surface-raised hover:text-text'"
+            [style.color]="selectedSpec() === spec.spec_slug ? classColor(selectedClass()!) : ''"
           >
+            @if (specIconUrl(spec); as url) {
+              <img [src]="url" [alt]="spec.spec_name" class="w-5 h-5 rounded object-cover shrink-0"
+                [class]="selectedSpec() === spec.spec_slug ? 'opacity-100' : 'opacity-50'">
+            }
             {{ spec.spec_name }}
           </button>
         }

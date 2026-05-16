@@ -57,5 +57,5 @@ SPECS: list[tuple[str, str]] = [
     ("protection", "warrior"),
 ]
 
-# Max concurrent spec scrapes (each fetches 3 pages in parallel)
+# Max concurrent spec scrapes (each fetches 2 pages in parallel)
 CONCURRENT_SPECS = 2

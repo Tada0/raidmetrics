@@ -29,6 +29,49 @@ export class BisViewerComponent {
     { id: 'gems', label: 'Gems' },
   ];
 
+  private readonly SPEC_ICONS: Record<string, string> = {
+    'blood/death-knight':     'spell_deathknight_bloodpresence',
+    'frost/death-knight':     'spell_deathknight_frostpresence',
+    'unholy/death-knight':    'spell_deathknight_unholypresence',
+    'devourer/demon-hunter':  'ability_demonhunter_specdevourer',
+    'havoc/demon-hunter':     'ability_demonhunter_specdps',
+    'vengeance/demon-hunter': 'ability_demonhunter_spectank',
+    'balance/druid':          'spell_nature_starfall',
+    'feral/druid':            'ability_druid_catform',
+    'guardian/druid':         'ability_racial_bearform',
+    'restoration/druid':      'spell_nature_healingtouch',
+    'augmentation/evoker':    'classicon_evoker_augmentation',
+    'devastation/evoker':     'classicon_evoker_devastation',
+    'preservation/evoker':    'classicon_evoker_preservation',
+    'beast-mastery/hunter':   'ability_hunter_bestialdiscipline',
+    'marksmanship/hunter':    'ability_hunter_focusedaim',
+    'survival/hunter':        'ability_hunter_camouflage',
+    'arcane/mage':            'spell_holy_magicalsentry',
+    'fire/mage':              'spell_fire_firebolt02',
+    'frost/mage':             'spell_frost_frostbolt02',
+    'brewmaster/monk':        'spell_monk_brewmaster_spec',
+    'mistweaver/monk':        'spell_monk_mistweaver_spec',
+    'windwalker/monk':        'spell_monk_windwalker_spec',
+    'holy/paladin':           'spell_holy_holybolt',
+    'protection/paladin':     'ability_paladin_shieldofthetemplar',
+    'retribution/paladin':    'spell_holy_auraoflight',
+    'discipline/priest':      'spell_holy_powerwordshield',
+    'holy/priest':            'spell_holy_guardianspirit',
+    'shadow/priest':          'spell_shadow_shadowform',
+    'assassination/rogue':    'ability_rogue_deadlybrew',
+    'outlaw/rogue':           'ability_rogue_waylay',
+    'subtlety/rogue':         'ability_stealth',
+    'elemental/shaman':       'spell_nature_lightning',
+    'enhancement/shaman':     'spell_shaman_improvedstormstrike',
+    'restoration/shaman':     'spell_nature_magicimmunity',
+    'affliction/warlock':     'spell_shadow_deathcoil',
+    'demonology/warlock':     'spell_shadow_metamorphosis',
+    'destruction/warlock':    'spell_shadow_rainoffire',
+    'arms/warrior':           'ability_warrior_savageblow',
+    'fury/warrior':           'ability_warrior_innerrage',
+    'protection/warrior':     'ability_warrior_defensivestance',
+  };
+
   private readonly CLASS_COLORS: Record<string, string> = {
     'death-knight': '#C41E3A',
     'demon-hunter': '#A330C9',
@@ -134,6 +177,16 @@ export class BisViewerComponent {
 
   classColor(classSlug: string): string {
     return this.CLASS_COLORS[classSlug] ?? '#CCCCCC';
+  }
+
+  classIconUrl(classSlug: string): string {
+    return `https://wow.zamimg.com/images/wow/icons/medium/classicon_${classSlug.replace(/-/g, '')}.jpg`;
+  }
+
+  specIconUrl(spec: BisSpec): string | null {
+    const key = `${spec.spec_slug}/${spec.class_slug}`;
+    const icon = this.SPEC_ICONS[key];
+    return icon ? `/icons/specs/${icon}.jpg` : null;
   }
 
   wowheadItem(itemId: number): string {

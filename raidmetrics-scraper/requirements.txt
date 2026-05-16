@@ -2,3 +2,6 @@ httpx==0.28.1
 sqlalchemy==2.0.44
 psycopg2-binary==2.9.11
 python-dotenv==1.1.0
+fastapi==0.122.0
+uvicorn==0.38.0
+apscheduler==3.10.4

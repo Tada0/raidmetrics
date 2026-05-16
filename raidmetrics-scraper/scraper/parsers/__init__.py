@@ -81,8 +81,8 @@ def extract_name(jsx: str) -> str:
     m = re.search(r'&nbsp;([^<]+)</span>', jsx)
     if m:
         return m.group(1).strip()
-    # GearIcon without badge or ItemIcon: >Name</XxxIcon>
-    m = re.search(r'>([^<>]+)</(Item|Gear)Icon>', jsx)
+    # GearIcon without badge, ItemIcon, AbilityIcon, SpellIcon, etc.: >Name</XxxIcon>
+    m = re.search(r'>([^<>]+)</(Item|Gear|Ability|Spell)Icon>', jsx)
     if m:
         return m.group(1).strip()
     return ""

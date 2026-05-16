@@ -4,10 +4,13 @@ import { Observable } from 'rxjs';
 
 export type Difficulty = 'normal' | 'heroic' | 'mythic';
 
+export type Role = 'tank' | 'healer' | 'dps';
+
 export interface RosterMember {
   character_name: string;
   character_realm: string;
   character_class: string | null;
+  role: Role | null;
   sort_order: number;
 }
 

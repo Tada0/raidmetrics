@@ -21,6 +21,7 @@ class RosterMemberIn(BaseModel):
     character_name: str
     character_realm: str
     character_class: str | None = None
+    role: str | None = None  # 'tank' | 'healer' | 'dps'
     sort_order: int = 0
 
 
@@ -35,6 +36,7 @@ def _roster_response(roster: RaidRoster) -> dict:
                 "character_name": m.character_name,
                 "character_realm": m.character_realm,
                 "character_class": m.character_class,
+                "role": m.role,
                 "sort_order": m.sort_order,
             }
             for m in roster.members
@@ -140,6 +142,7 @@ async def update_raid_roster(
                 character_name=member.character_name,
                 character_realm=member.character_realm,
                 character_class=member.character_class,
+                role=member.role,
                 sort_order=i,
             )
         )

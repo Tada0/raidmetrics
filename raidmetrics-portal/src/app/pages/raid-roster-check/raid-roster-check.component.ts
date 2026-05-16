@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { TitleCasePipe } from '@angular/common';
 import { CharacterSelectionService } from '../../services/character-selection.service';
 
 type EnchantPolicy = 'none' | 'any' | 'top3';
@@ -17,6 +18,7 @@ interface CriterionResult {
 interface MemberResult {
   name: string;
   realm: string;
+  role: 'tank' | 'healer' | 'dps' | null;
   spec: string | null;
   class: string;
   equipped_item_level: number;
@@ -28,7 +30,7 @@ interface MemberResult {
 
 @Component({
   selector: 'app-raid-roster-check',
-  imports: [FormsModule],
+  imports: [FormsModule, TitleCasePipe],
   templateUrl: './raid-roster-check.component.html',
 })
 export class RaidRosterCheckComponent {

@@ -164,10 +164,22 @@
 
               <!-- Character name + spec -->
               <td class="px-4 py-3">
-                <p class="font-medium text-text">{{ result.name }}</p>
-                <p class="text-xs text-muted mt-0.5">
-                  @if (result.spec) { {{ result.spec }} · }{{ result.class }}
-                </p>
+                <div class="flex items-center gap-2">
+                  @if (result.role) {
+                    <img
+                      [src]="'/icons/roles/' + result.role + '.png'"
+                      [alt]="result.role"
+                      [title]="result.role | titlecase"
+                      class="w-5 h-5 rounded shrink-0"
+                    />
+                  }
+                  <div>
+                    <p class="font-medium text-text">{{ result.name }}</p>
+                    <p class="text-xs text-muted mt-0.5">
+                      @if (result.spec) { {{ result.spec }} · }{{ result.class }}
+                    </p>
+                  </div>
+                </div>
               </td>
 
               <!-- ilvl -->

@@ -70,6 +70,7 @@ class RaidRosterMember(Base):
     character_name = Column(String, nullable=False)
     character_realm = Column(String, nullable=False)
     character_class = Column(String, nullable=True)
+    role = Column(String, nullable=True)  # 'tank' | 'healer' | 'dps'
     sort_order = Column(Integer, default=0)
 
     roster = relationship("RaidRoster", back_populates="members")

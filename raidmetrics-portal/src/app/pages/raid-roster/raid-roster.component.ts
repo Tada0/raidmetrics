@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { CharacterSelectionService } from '../../services/character-selection.service';
-import { Difficulty, RaidRosterService, RosterMember } from '../../services/raid-roster.service';
+import { Difficulty, RaidRosterService, Role, RosterMember } from '../../services/raid-roster.service';
 import { GuildMember, WowService } from '../../services/wow.service';
 
 interface RostersState {
@@ -41,6 +41,7 @@ export class RaidRosterComponent {
   });
 
   readonly difficulties: Difficulty[] = ['normal', 'heroic', 'mythic'];
+  readonly roles: Role[] = ['tank', 'healer', 'dps'];
   readonly difficultyLabels = DIFFICULTY_LABELS;
   readonly rosterLimits = ROSTER_LIMITS;
 
@@ -103,7 +104,7 @@ export class RaidRosterComponent {
     });
   }
 
-  addMember(member: GuildMember): void {
+  addMember(member: GuildMember, role: Role): void {
     const tab = this.activeTab();
     const current = this.rosters();
     if (current[tab].length >= ROSTER_LIMITS[tab]) return;
@@ -111,11 +112,19 @@ export class RaidRosterComponent {
       character_name: member.name,
       character_realm: member.realm,
       character_class: member.class,
+      role,
       sort_order: current[tab].length,
     };
     this.rosters.set({ ...current, [tab]: [...current[tab], newMember] });
     this.searchQuery.set('');
   }
+
+  readonly roleLabel: Record<Role, string> = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
+  readonly roleClass: Record<Role, string> = {
+    tank:   'text-blue-400 bg-blue-400/10',
+    healer: 'text-green-400 bg-green-400/10',
+    dps:    'text-red-400 bg-red-400/10',
+  };
 
   removeMember(difficulty: Difficulty, index: number): void {
     const current = this.rosters();

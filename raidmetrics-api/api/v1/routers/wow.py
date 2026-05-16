@@ -717,6 +717,11 @@ async def roster_check(
     if not roster or not roster.members:
         return {"members": []}
 
+    role_map = {
+        (m.character_name.lower(), m.character_realm.lower()): m.role
+        for m in roster.members
+    }
+
     # Fetch equipment for all roster members concurrently via Blizzard API
     sem = asyncio.Semaphore(5)
     async with battlenet_client(current_user.blizzard_access_token) as client:
@@ -796,9 +801,11 @@ async def roster_check(
             else na_result
         )
 
+        name_key = (member.get("name", "").lower(), member.get("realm", "").lower())
         output.append({
             "name": member.get("name"),
             "realm": member.get("realm"),
+            "role": role_map.get(name_key),
             "spec": spec or None,
             "class": cls,
             "equipped_item_level": equipped_ilvl,

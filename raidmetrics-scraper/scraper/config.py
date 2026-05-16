@@ -1,8 +1,6 @@
 ARCHON_BASE = "https://www.archon.gg"
 
-PAGES = ["overview", "gear-and-tier-set", "enchants-and-gems"]
-
-# (spec_slug, class_slug) — 40 specs across all WoW classes
+# (spec_slug, class_slug) — across all WoW classes
 SPECS: list[tuple[str, str]] = [
     # Death Knight
     ("blood", "death-knight"),

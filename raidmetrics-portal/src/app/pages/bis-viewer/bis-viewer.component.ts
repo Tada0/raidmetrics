@@ -154,6 +154,8 @@ export class BisViewerComponent {
     return has2H && has1H;
   });
 
+  readonly selectedSlot = signal<string | null>(null);
+
   readonly popularBySlot = computed((): [string, PopularItem[]][] => {
     const snap = this.bis.snapshot();
     if (!snap) return [];
@@ -161,6 +163,15 @@ export class BisViewerComponent {
       snap.popular_items.filter(i => !i.is_crafted && !i.is_embellishment),
       i => i.slot,
     );
+  });
+
+  readonly activePopularSlot = computed(() =>
+    this.selectedSlot() ?? this.popularBySlot()[0]?.[0] ?? null
+  );
+
+  readonly popularItemsForSlot = computed((): PopularItem[] => {
+    const target = this.activePopularSlot();
+    return this.popularBySlot().find(([slot]) => slot === target)?.[1] ?? [];
   });
 
   readonly craftedItems = computed((): PopularItem[] =>
@@ -199,6 +210,7 @@ export class BisViewerComponent {
   selectSpec(spec: BisSpec): void {
     this.selectedSpec.set(spec.spec_slug);
     this.activeTab.set('bis');
+    this.selectedSlot.set(null);
     this.bis.loadSnapshot(spec.spec_slug, spec.class_slug);
   }
 

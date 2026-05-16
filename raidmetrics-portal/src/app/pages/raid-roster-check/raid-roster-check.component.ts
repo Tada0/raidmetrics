@@ -82,6 +82,11 @@ export class RaidRosterCheckComponent {
     return c?.guild_id != null ? c : null;
   });
 
+  readonly canEdit = computed(() => {
+    const c = this.selection.selected();
+    return !!c && (c.is_gm || c.is_officer);
+  });
+
   readonly passCount = computed(() =>
     this.results().filter(r =>
       r.ilvl.pass && r.enchants.pass && r.gems.pass && r.embellishments.pass

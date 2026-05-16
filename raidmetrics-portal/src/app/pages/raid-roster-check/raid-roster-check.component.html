@@ -6,6 +6,13 @@
     <p class="text-muted text-sm mt-0.5">Compare your roster's gear against popular and BiS items.</p>
   </div>
 
+  @if (!canEdit()) {
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+      <p class="text-text font-medium mb-2">Access restricted</p>
+      <p class="text-muted text-sm">Only GMs and Officers can use Raid Roster Check.</p>
+    </div>
+  } @else {
+
   <!-- Controls row -->
   <div class="flex items-center gap-4 mb-6">
 
@@ -247,5 +254,7 @@
       No roster members found for {{ diffLabels[selectedDifficulty()] }}.
     </div>
   }
+
+  } <!-- end canEdit -->
 
 </div>

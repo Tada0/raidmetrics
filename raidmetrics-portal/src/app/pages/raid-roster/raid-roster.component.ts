@@ -126,6 +126,26 @@ export class RaidRosterComponent {
     dps:    'text-red-400 bg-red-400/10',
   };
 
+  private readonly classRoles: Record<string, Role[]> = {
+    'Death Knight': ['tank', 'dps'],
+    'Demon Hunter': ['tank', 'dps'],
+    'Druid':        ['tank', 'healer', 'dps'],
+    'Evoker':       ['healer', 'dps'],
+    'Hunter':       ['dps'],
+    'Mage':         ['dps'],
+    'Monk':         ['tank', 'healer', 'dps'],
+    'Paladin':      ['tank', 'healer', 'dps'],
+    'Priest':       ['healer', 'dps'],
+    'Rogue':        ['dps'],
+    'Shaman':       ['healer', 'dps'],
+    'Warlock':      ['dps'],
+    'Warrior':      ['tank', 'dps'],
+  };
+
+  availableRoles(member: GuildMember): Role[] {
+    return this.classRoles[member.class] ?? this.roles;
+  }
+
   removeMember(difficulty: Difficulty, index: number): void {
     const current = this.rosters();
     this.rosters.set({ ...current, [difficulty]: current[difficulty].filter((_, i) => i !== index) });

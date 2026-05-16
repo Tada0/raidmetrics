@@ -184,7 +184,7 @@
                       <p class="text-muted text-xs truncate">{{ member.realm }} · {{ member.class }}</p>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                      @for (role of roles; track role) {
+                      @for (role of availableRoles(member); track role) {
                         <button
                           (click)="addMember(member, role)"
                           class="rounded hover:opacity-80 transition-opacity"

@@ -96,6 +96,7 @@ class ArchonPopularEnchant(Base):
     enchant_id = Column(Integer, nullable=False)
     enchant_name = Column(String, nullable=False)
     usage_percent = Column(Float, nullable=True)
+    icon_name = Column(String, nullable=False, server_default="")
 
     snapshot = relationship("ArchonSpecSnapshot", back_populates="popular_enchants")
 

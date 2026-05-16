@@ -21,6 +21,7 @@ class PopularEnchant:
     enchant_id: int
     enchant_name: str
     usage_percent: float | None
+    icon_name: str = ""
 
 
 @dataclass
@@ -68,11 +69,18 @@ def find_component(page_data: dict, component: str) -> dict | None:
 _ID_RE = re.compile(r'id=\{(\d+)\}')
 _USAGE_RE = re.compile(r'([\d.]+)%')
 _SLOT_HEADER_RE = re.compile(r'>([^<>]+)</ImageIcon>')
+_ICON_RE = re.compile(r"icon='([^']+)'")
 
 
 def extract_id(jsx: str) -> int | None:
     m = _ID_RE.search(jsx)
     return int(m.group(1)) if m else None
+
+
+def extract_icon_name(jsx: str) -> str:
+    """Extract icon filename (without .jpg) from JSX icon attribute."""
+    m = _ICON_RE.search(jsx)
+    return m.group(1).removesuffix('.jpg') if m else ""
 
 
 def extract_name(jsx: str) -> str:

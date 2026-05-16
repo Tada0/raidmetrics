@@ -74,7 +74,7 @@ async def get_snapshot(
     """), {"sid": sid}).fetchall()
 
     enchants = db.execute(text("""
-        SELECT slot, rank, enchant_id, enchant_name, usage_percent
+        SELECT slot, rank, enchant_id, enchant_name, usage_percent, icon_name
         FROM archon_popular_enchants
         WHERE snapshot_id = :sid
         ORDER BY slot, rank

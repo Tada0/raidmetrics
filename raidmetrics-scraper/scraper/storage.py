@@ -61,6 +61,7 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
             enchant_id=enchant.enchant_id,
             enchant_name=enchant.enchant_name,
             usage_percent=enchant.usage_percent,
+            icon_name=enchant.icon_name,
         ))
 
     for gem in spec.popular_gems:

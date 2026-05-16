@@ -24,6 +24,7 @@ export interface PopularEnchant {
   enchant_id: number;
   enchant_name: string;
   usage_percent: number | null;
+  icon_name: string;
 }
 
 export interface PopularGem {

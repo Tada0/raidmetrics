@@ -2,7 +2,7 @@
 import logging
 
 from . import (
-    PopularEnchant, PopularGem, extract_id, extract_name,
+    PopularEnchant, PopularGem, extract_icon_name, extract_id, extract_name,
     extract_slot_from_header, extract_usage, find_component,
 )
 
@@ -42,6 +42,7 @@ def _parse_enchants(page_data: dict) -> list[PopularEnchant]:
                 enchant_id=enchant_id,
                 enchant_name=extract_name(item_jsx),
                 usage_percent=extract_usage(row.get("popularity", "")),
+                icon_name=extract_icon_name(item_jsx),
             ))
 
     return enchants

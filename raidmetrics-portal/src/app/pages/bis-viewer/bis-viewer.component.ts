@@ -188,6 +188,17 @@ export class BisViewerComponent {
     return this._groupBySlot(snap.popular_enchants, e => e.slot);
   });
 
+  readonly selectedEnchantSlot = signal<string | null>(null);
+
+  readonly activeEnchantSlot = computed(() =>
+    this.selectedEnchantSlot() ?? this.enchantsBySlot()[0]?.[0] ?? null
+  );
+
+  readonly enchantsForSlot = computed((): PopularEnchant[] => {
+    const target = this.activeEnchantSlot();
+    return this.enchantsBySlot().find(([slot]) => slot === target)?.[1] ?? [];
+  });
+
   readonly epicGems = computed((): PopularGem[] =>
     this.bis.snapshot()?.popular_gems.filter(g => g.gem_quality === 'epic') ?? []
   );
@@ -211,6 +222,7 @@ export class BisViewerComponent {
     this.selectedSpec.set(spec.spec_slug);
     this.activeTab.set('bis');
     this.selectedSlot.set(null);
+    this.selectedEnchantSlot.set(null);
     this.bis.loadSnapshot(spec.spec_slug, spec.class_slug);
   }
 
@@ -230,6 +242,23 @@ export class BisViewerComponent {
 
   wowheadItem(itemId: number): string {
     return `https://www.wowhead.com/item=${itemId}`;
+  }
+
+  enchantIconUrl(iconName: string): string | null {
+    return iconName ? `https://wow.zamimg.com/images/wow/icons/medium/${iconName}.jpg` : null;
+  }
+
+  enchantWowheadUrl(enchantId: number, iconName: string): string {
+    const type = this._enchantWowheadType(iconName);
+    return `https://www.wowhead.com/${type}=${enchantId}`;
+  }
+
+  enchantWowheadAttr(enchantId: number, iconName: string): string {
+    return `${this._enchantWowheadType(iconName)}=${enchantId}`;
+  }
+
+  private _enchantWowheadType(iconName: string): 'spell' | 'item' {
+    return (iconName.startsWith('ability_') || iconName.startsWith('spell_')) ? 'spell' : 'item';
   }
 
   iconUrl(itemId: number): string | null {

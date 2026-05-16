@@ -1,6 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { BisService } from '../../services/bis.service';
 import { CharacterSelectionService } from '../../services/character-selection.service';
 import { CharacterDetail, CharacterItem, WowService } from '../../services/wow.service';
 
@@ -35,11 +36,16 @@ const QUALITY_COLORS: Record<string, string> = {
 export class CharacterDetailComponent {
   readonly selection = inject(CharacterSelectionService);
   private wow = inject(WowService);
+  readonly bis = inject(BisService);
 
   readonly char = computed(() => this.selection.selected());
   readonly detail = signal<CharacterDetail | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+
+  readonly bisItemIds = computed(() =>
+    new Set(this.bis.snapshot()?.wowhead_bis_items.map(i => i.item_id) ?? [])
+  );
 
   readonly slotLabels = SLOT_LABELS;
 
@@ -61,6 +67,8 @@ export class CharacterDetailComponent {
   });
 
   constructor() {
+    this.bis.loadSpecs();
+
     effect(() => {
       const char = this.char();
       if (char?.realm_slug) {
@@ -68,6 +76,14 @@ export class CharacterDetailComponent {
       } else {
         this.detail.set(null);
       }
+    });
+
+    effect(() => {
+      const d = this.detail();
+      const specs = this.bis.specs();
+      if (!d?.spec || !specs) return;
+      const spec = specs.find(s => s.spec_name === d.spec && s.class_name === d.class);
+      if (spec) this.bis.loadSnapshot(spec.spec_slug, spec.class_slug);
     });
   }
 

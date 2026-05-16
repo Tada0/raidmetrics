@@ -63,24 +63,27 @@ async def run_scrape(specs: list[tuple[str, str]] | None = None, dry_run: bool =
     run = create_run(db) if db else None
 
     try:
+        failed = 0
         sem = asyncio.Semaphore(CONCURRENT_SPECS)
         async with ArchonClient() as client:
-            results = await asyncio.gather(
-                *[_scrape_spec(client, spec, cls, sem) for spec, cls in specs]
-            )
-
-        scraped = [r for r in results if r is not None]
-        failed = len(specs) - len(scraped)
+            tasks = [
+                asyncio.create_task(_scrape_spec(client, spec, cls, sem))
+                for spec, cls in specs
+            ]
+            for coro in asyncio.as_completed(tasks):
+                result = await coro
+                if result is None:
+                    failed += 1
+                elif db and run:
+                    save_spec(db, run, result)
 
         if db and run:
-            for spec in scraped:
-                save_spec(db, run, spec)
             finish_run(db, run, success=(failed == 0))
             prune_old_runs(db)
 
         logger.info(
             "Scrape complete — %d/%d specs OK%s",
-            len(scraped), len(specs),
+            len(specs) - failed, len(specs),
             " (dry run)" if dry_run else "",
         )
         return failed == 0

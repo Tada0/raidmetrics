@@ -3,13 +3,11 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import timezone, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException
 
-from .config import SPECS
 from .db import get_session
 from .models import ArchonScrapeRun
 from .runner import run_scrape
@@ -30,14 +28,13 @@ async def _run_and_clear():
     try:
         await run_scrape()
     except Exception as exc:
-        logger.error("Scheduled scrape failed: %s", exc)
+        logger.error("Scrape failed: %s", exc)
     finally:
         _running = False
         _current_task = None
 
 
 def _start_scrape() -> bool:
-    """Start a scrape task if one isn't already running. Returns True if started."""
     global _running, _current_task
     if _running:
         return False
@@ -90,12 +87,10 @@ async def status():
             "started_at": last_run.started_at,
             "completed_at": last_run.completed_at,
             "success": last_run.success,
-            "specs_scraped": last_run.specs_scraped,
             "error_message": last_run.error_message,
         }
 
     return {
         "running": _running,
-        "total_specs": len(SPECS),
         "last_run": last_run_data,
     }

@@ -6,13 +6,11 @@ export interface ScrapeRun {
   started_at: string;
   completed_at: string | null;
   success: boolean;
-  specs_scraped: number;
   error_message: string | null;
 }
 
 export interface ScrapeStatus {
   running: boolean;
-  total_specs: number;
   last_run: ScrapeRun | null;
 }
 

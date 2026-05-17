@@ -85,12 +85,14 @@ export interface EnchantDetail {
   status: GearStatus;
   enchant: string | null;
   reason: string | null;
+  rank: number | null;
 }
 
 export interface GemDetail {
   slot: string;
   status: GearStatus;
   reason: string | null;
+  rank: number | null;
 }
 
 export interface EmbellishmentDetail {
@@ -98,6 +100,7 @@ export interface EmbellishmentDetail {
   reason: string | null;
   count: number;
   names: string[];
+  rank: number | null;
 }
 
 export interface CharacterGearCheck {

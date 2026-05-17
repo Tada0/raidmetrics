@@ -586,26 +586,27 @@ def _detail_enchants(items: list, enchants: list) -> list[dict]:
         display = item.get("enchant_display_name", "")
 
         if not char_ids and not display:
-            results.append({"slot": item["slot"], "status": "red", "enchant": None, "reason": "Not enchanted"})
+            results.append({"slot": item["slot"], "status": "red", "enchant": None, "reason": "Not enchanted", "rank": None})
             continue
 
-        all_popular   = by_slot[enchant_slot]
-        top3_ids      = {e.enchant_id for e in all_popular if e.rank <= 3}
-        top3_names    = {e.enchant_name.lower() for e in all_popular if e.rank <= 3}
-        all_ids       = {e.enchant_id for e in all_popular}
-        all_names     = {e.enchant_name.lower() for e in all_popular}
+        all_popular = by_slot[enchant_slot]
 
-        def _matches(ids: set[int], names: set[str]) -> bool:
-            return bool(char_ids & ids) or bool(display and any(display == n or n in display for n in names))
+        matched_rank: int | None = None
+        for e in sorted(all_popular, key=lambda x: x.rank):
+            ids = {e.enchant_id}
+            name = e.enchant_name.lower()
+            if bool(char_ids & ids) or bool(display and (display == name or name in display)):
+                matched_rank = e.rank
+                break
 
-        if _matches(top3_ids, top3_names):
+        if matched_rank is not None and matched_rank <= 3:
             status, reason = "green", None
-        elif _matches(all_ids, all_names):
+        elif matched_rank is not None:
             status, reason = "yellow", "Not top-3 popular"
         else:
             status, reason = "red", "Not a popular enchant"
 
-        results.append({"slot": item["slot"], "status": status, "enchant": display or None, "reason": reason})
+        results.append({"slot": item["slot"], "status": status, "enchant": display or None, "reason": reason, "rank": matched_rank})
     return results
 
 
@@ -613,6 +614,7 @@ def _detail_gems(items: list, gems: list) -> list[dict]:
     top_epic_ids    = {g.item_id for g in gems if g.gem_quality == "epic" and g.rank <= 3}
     top_rare_ids    = {g.item_id for g in gems if g.gem_quality == "rare" and g.rank <= 3}
     all_popular_ids = {g.item_id for g in gems}
+    rank_by_id      = {g.item_id: g.rank for g in gems}
 
     results = []
     for item in items:
@@ -621,15 +623,18 @@ def _detail_gems(items: list, gems: list) -> list[dict]:
             continue
         gem_ids: list[int] = item.get("gem_ids", [])
         if len(gem_ids) < socket_count:
-            results.append({"slot": item["slot"], "status": "red", "reason": "Empty socket"})
+            results.append({"slot": item["slot"], "status": "red", "reason": "Empty socket", "rank": None})
             continue
+        gem_ranks = [rank_by_id.get(gid) for gid in gem_ids]
+        matched_rank: int | None = max((r for r in gem_ranks if r is not None), default=None) if all(r is not None for r in gem_ranks) else None
         if all(gid in top_epic_ids or gid in top_rare_ids for gid in gem_ids):
             status, reason = "green", None
         elif all(gid in all_popular_ids for gid in gem_ids):
             status, reason = "yellow", "Not top-3 popular"
         else:
             status, reason = "red", "Not a popular gem"
-        results.append({"slot": item["slot"], "status": status, "reason": reason})
+            matched_rank = None
+        results.append({"slot": item["slot"], "status": status, "reason": reason, "rank": matched_rank})
     return results
 
 
@@ -638,22 +643,23 @@ def _detail_embellishments(items: list, popular_items: list) -> dict:
     count = len(emb_items)
 
     if count == 0:
-        return {"status": "red", "reason": "No embellishments equipped", "count": 0, "names": []}
+        return {"status": "red", "reason": "No embellishments equipped", "count": 0, "names": [], "rank": None}
     if count == 1:
-        return {"status": "red", "reason": "Only 1/2 embellishments equipped", "count": 1, "names": []}
+        return {"status": "red", "reason": "Only 1/2 embellishments equipped", "count": 1, "names": [], "rank": None}
 
-    top3_name_combos: list[frozenset[str]] = []
-    top3_id_combos: list[frozenset[int]] = []
-    for i in popular_items:
-        if not i.is_embellishment or i.rank > 3:
+    # Build all combos sorted by rank so we find the best match first
+    name_combos: list[tuple[frozenset[str], int]] = []
+    id_combos: list[tuple[frozenset[int], int]] = []
+    for i in sorted(popular_items, key=lambda x: x.rank):
+        if not i.is_embellishment:
             continue
         parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
-        top3_name_combos.append(parts)
+        name_combos.append((parts, i.rank))
         ids: set[int] = {i.item_id}
         if getattr(i, "item_id2", None):
             ids.add(i.item_id2)
         if len(ids) >= 2:
-            top3_id_combos.append(frozenset(ids))
+            id_combos.append((frozenset(ids), i.rank))
 
     char_emb_names: set[str] = set()
     char_emb_ids: set[int] = set()
@@ -662,13 +668,21 @@ def _detail_embellishments(items: list, popular_items: list) -> dict:
         if item.get("item_id"):
             char_emb_ids.add(item["item_id"])
 
-    name_match = any(combo.issubset(char_emb_names) for combo in top3_name_combos)
-    id_match   = bool(top3_id_combos) and any(combo.issubset(char_emb_ids) for combo in top3_id_combos)
+    matched_rank: int | None = None
+    for combo, rank in name_combos:
+        if combo.issubset(char_emb_names):
+            matched_rank = rank
+            break
+    if matched_rank is None:
+        for combo, rank in id_combos:
+            if combo.issubset(char_emb_ids):
+                matched_rank = rank
+                break
 
-    status = "green" if (name_match or id_match) else "yellow"
+    status = "green" if (matched_rank is not None and matched_rank <= 3) else "yellow"
     reason = None if status == "green" else "Combo not in top-3 for this spec"
     names  = [n.title() for item in emb_items for n in item.get("spell_names", [])]
-    return {"status": status, "reason": reason, "count": count, "names": names}
+    return {"status": status, "reason": reason, "count": count, "names": names, "rank": matched_rank}
 
 
 def _resolve_enchant_slot(slot_type: str, known_slots: set[str]) -> str | None:

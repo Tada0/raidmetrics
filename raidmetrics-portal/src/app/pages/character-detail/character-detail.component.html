@@ -50,11 +50,14 @@
                       <div class="relative group flex items-center gap-2 text-xs" [class.cursor-help]="e.reason">
                         <span class="font-bold shrink-0" [class]="statusClass(e.status)">{{ statusIcon(e.status) }}</span>
                         <span
-                          class="truncate"
+                          class="truncate flex-1"
                           [class]="e.reason
                             ? 'underline decoration-dashed underline-offset-2 ' + statusClass(e.status)
                             : 'text-muted'"
                         >{{ e.slot }}</span>
+                        @if (e.rank) {
+                          <span class="text-[10px] text-muted shrink-0">#{{ e.rank }}</span>
+                        }
                         @if (e.reason) {
                           <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
                             {{ e.reason }}
@@ -77,11 +80,14 @@
                         <div class="relative group flex items-center gap-2 text-xs" [class.cursor-help]="g.reason">
                           <span class="font-bold shrink-0" [class]="statusClass(g.status)">{{ statusIcon(g.status) }}</span>
                           <span
-                            class="truncate"
+                            class="truncate flex-1"
                             [class]="g.reason
                               ? 'underline decoration-dashed underline-offset-2 ' + statusClass(g.status)
                               : 'text-muted'"
                           >{{ g.slot }}</span>
+                          @if (g.rank) {
+                            <span class="text-[10px] text-muted shrink-0">#{{ g.rank }}</span>
+                          }
                           @if (g.reason) {
                             <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
                               {{ g.reason }}
@@ -100,7 +106,7 @@
                   <div class="relative group flex items-start gap-2 text-xs" [class.cursor-help]="gc.embellishments.reason">
                     <span class="font-bold shrink-0 mt-px" [class]="statusClass(gc.embellishments.status)">{{ statusIcon(gc.embellishments.status) }}</span>
                     <span
-                      class="leading-snug"
+                      class="leading-snug flex-1"
                       [class]="gc.embellishments.reason
                         ? 'underline decoration-dashed underline-offset-2 ' + statusClass(gc.embellishments.status)
                         : 'text-muted'"
@@ -113,6 +119,9 @@
                         None equipped
                       }
                     </span>
+                    @if (gc.embellishments.rank) {
+                      <span class="text-[10px] text-muted shrink-0 mt-px">#{{ gc.embellishments.rank }}</span>
+                    }
                     @if (gc.embellishments.reason) {
                       <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
                         {{ gc.embellishments.reason }}

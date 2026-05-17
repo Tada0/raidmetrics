@@ -104,7 +104,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
-                  @for (member of rosters()[activeTab()]; track member.character_name + member.character_realm; let i = $index) {
+                  @for (member of sortedRoster(); track member.character_name + member.character_realm; let i = $index) {
                     <tr class="hover:bg-surface-raised/50 transition-colors">
                       <td class="px-4 py-2.5 text-muted text-xs">{{ i + 1 }}</td>
                       <td class="px-4 py-2.5">
@@ -134,7 +134,7 @@
                       @if (canEdit()) {
                         <td class="px-4 py-2.5 text-right">
                           <button
-                            (click)="removeMember(activeTab(), i)"
+                            (click)="removeMember(activeTab(), member.character_name, member.character_realm)"
                             class="text-muted hover:text-danger transition-colors"
                             title="Remove"
                           >

@@ -53,6 +53,8 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("No SCRAPE_SCHEDULE set — manual trigger only")
     scheduler.start()
+    logger.info("Running startup scrape")
+    _start_scrape()
     yield
     scheduler.shutdown()
 

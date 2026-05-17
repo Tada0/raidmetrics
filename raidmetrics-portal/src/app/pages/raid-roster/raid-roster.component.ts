@@ -59,6 +59,17 @@ export class RaidRosterComponent {
   readonly guildMembers = signal<GuildMember[]>([]);
   readonly searchQuery = signal('');
 
+  private readonly _rolePriority: Record<string, number> = { tank: 0, healer: 1, dps: 2 };
+
+  readonly sortedRoster = computed(() =>
+    [...this.rosters()[this.activeTab()]].sort((a, b) => {
+      const rA = this._rolePriority[a.role ?? ''] ?? 3;
+      const rB = this._rolePriority[b.role ?? ''] ?? 3;
+      if (rA !== rB) return rA - rB;
+      return a.character_name.localeCompare(b.character_name);
+    })
+  );
+
   readonly filteredAvailable = computed(() => {
     const q = this.searchQuery().toLowerCase();
     const current = this.rosters()[this.activeTab()];
@@ -152,9 +163,14 @@ export class RaidRosterComponent {
     return this.classRoles[member.class] ?? this.roles;
   }
 
-  removeMember(difficulty: Difficulty, index: number): void {
+  removeMember(difficulty: Difficulty, name: string, realm: string): void {
     const current = this.rosters();
-    this.rosters.set({ ...current, [difficulty]: current[difficulty].filter((_, i) => i !== index) });
+    this.rosters.set({
+      ...current,
+      [difficulty]: current[difficulty].filter(
+        m => !(m.character_name === name && m.character_realm === realm)
+      ),
+    });
   }
 
   saveRoster(difficulty: Difficulty): void {

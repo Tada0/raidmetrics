@@ -98,6 +98,17 @@ export class RaidRosterCheckComponent {
     return !!c && (c.is_gm || c.is_officer);
   });
 
+  private readonly _rolePriority: Record<string, number> = { tank: 0, healer: 1, dps: 2 };
+
+  readonly sortedResults = computed(() =>
+    [...this.results()].sort((a, b) => {
+      const rA = this._rolePriority[a.role ?? ''] ?? 3;
+      const rB = this._rolePriority[b.role ?? ''] ?? 3;
+      if (rA !== rB) return rA - rB;
+      return a.name.localeCompare(b.name);
+    })
+  );
+
   readonly passCount = computed(() =>
     this.results().filter(r =>
       r.ilvl.pass && r.enchants.pass && r.gems.pass && r.embellishments.pass

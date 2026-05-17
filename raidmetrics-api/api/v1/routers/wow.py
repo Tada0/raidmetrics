@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Any
 from urllib.parse import urlparse
 
@@ -475,6 +475,11 @@ async def _fetch_roster_member_equipment(
                 enchant_display_name = raw_display.removeprefix("Enchanted: ").strip().lower()
                 sockets = item.get("sockets", [])
                 gem_ids = [s["item"]["id"] for s in sockets if s.get("item", {}).get("id")]
+                gem_names = [
+                    s["item"]["name"].lower().strip()
+                    for s in sockets
+                    if s.get("item", {}).get("name")
+                ]
                 limit_cat = item.get("limit_category", "")
                 is_embellished = isinstance(limit_cat, str) and "embellished" in limit_cat.lower()
                 spell_names = [
@@ -491,6 +496,7 @@ async def _fetch_roster_member_equipment(
                     "enchant_item_id": enchant_item_id,
                     "enchant_display_name": enchant_display_name,
                     "gem_ids": gem_ids,
+                    "gem_names": gem_names,
                     "socket_count": len(sockets),
                     "is_embellished": is_embellished,
                     "spell_names": spell_names,
@@ -655,6 +661,58 @@ def _detail_gems(items: list, gems: list) -> list[dict]:
     return results
 
 
+def _build_emb_known(popular_items: list) -> tuple[set[str], dict[int, str]]:
+    """Build (known_parts, name_by_id) from archon embellishment data.
+
+    known_parts  — every lowercased combo part name (matched against spell_names).
+    name_by_id   — item_id / item_id2 → lowercased part name, so gem IDs and
+                   intrinsic embellishment item IDs can be resolved to a name.
+    """
+    known_parts: set[str] = set()
+    name_by_id: dict[int, str] = {}
+    for i in popular_items:
+        if not i.is_embellishment:
+            continue
+        parts = [p.strip().lower() for p in i.item_name.split(" / ")]
+        for part in parts:
+            known_parts.add(part)
+        if parts:
+            name_by_id[i.item_id] = parts[0]
+        if getattr(i, "item_id2", None) and len(parts) >= 2:
+            name_by_id[i.item_id2] = parts[1]
+    return known_parts, name_by_id
+
+
+def _canonical_emb_name(item: dict, known_parts: set[str], name_by_id: dict[int, str]) -> str | None:
+    """Return the single canonical embellishment name this item contributes.
+
+    Priority:
+    1. spell_names — applied embellishments (e.g. Arcanoweave Lining).
+    2. gem_names   — Darkmoon Sigil name directly from the socket data.
+    3. gem_ids     — gem ID → name via archon item_id2 mapping (fallback for sigils).
+    4. item_id     — intrinsic embellishments (the item IS the embellishment).
+    """
+    for spell_name in item.get("spell_names", []):
+        spell_lower = spell_name.lower()
+        if spell_lower in known_parts:
+            return spell_lower
+        # Darkmoon Sigils are reported by Blizzard as their proc spell name only
+        # (e.g. "Hunt" for "Darkmoon Sigil: Hunt"). Match against the suffix after ": ".
+        for part in known_parts:
+            if part.endswith(f": {spell_lower}"):
+                return part
+    for gem_name in item.get("gem_names", []):
+        if gem_name.lower() in known_parts:
+            return gem_name.lower()
+    for gid in item.get("gem_ids", []):
+        if gid in name_by_id:
+            return name_by_id[gid]
+    item_id = item.get("item_id")
+    if item_id and item_id in name_by_id:
+        return name_by_id[item_id]
+    return None
+
+
 def _detail_embellishments(items: list, popular_items: list) -> dict:
     emb_items = [i for i in items if i.get("is_embellished")]
     count = len(emb_items)
@@ -664,41 +722,51 @@ def _detail_embellishments(items: list, popular_items: list) -> dict:
     if count == 1:
         return {"status": "red", "reason": "Only 1/2 embellishments equipped", "count": 1, "names": [], "rank": None}
 
-    # Build all combos sorted by rank so we find the best match first
-    name_combos: list[tuple[frozenset[str], int]] = []
-    id_combos: list[tuple[frozenset[int], int]] = []
+    known_parts, name_by_id = _build_emb_known(popular_items)
+
+    # One canonical name per embellished item; Counter handles "A / A" duplicates correctly
+    char_emb_counter: Counter = Counter()
+    char_emb_ids: set[int] = set()
+    for item in emb_items:
+        name = _canonical_emb_name(item, known_parts, name_by_id)
+        if name:
+            char_emb_counter[name] += 1
+        if item.get("item_id"):
+            char_emb_ids.add(item["item_id"])
+        for gid in item.get("gem_ids", []):
+            if gid in name_by_id:
+                char_emb_ids.add(gid)
+
+    matched_rank: int | None = None
+    matched_archon_name: str | None = None
     for i in sorted(popular_items, key=lambda x: x.rank):
         if not i.is_embellishment:
             continue
-        parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
-        name_combos.append((parts, i.rank))
-        ids: set[int] = {i.item_id}
-        if getattr(i, "item_id2", None):
-            ids.add(i.item_id2)
-        if len(ids) >= 2:
-            id_combos.append((frozenset(ids), i.rank))
-
-    char_emb_names: set[str] = set()
-    char_emb_ids: set[int] = set()
-    for item in emb_items:
-        char_emb_names.update(item.get("spell_names", []))
-        if item.get("item_id"):
-            char_emb_ids.add(item["item_id"])
-
-    matched_rank: int | None = None
-    for combo, rank in name_combos:
-        if combo.issubset(char_emb_names):
-            matched_rank = rank
+        combo = Counter(p.strip().lower() for p in i.item_name.split(" / "))
+        if all(char_emb_counter[k] >= v for k, v in combo.items()):
+            matched_rank = i.rank
+            matched_archon_name = i.item_name
             break
     if matched_rank is None:
-        for combo, rank in id_combos:
-            if combo.issubset(char_emb_ids):
-                matched_rank = rank
+        for i in sorted(popular_items, key=lambda x: x.rank):
+            if not i.is_embellishment:
+                continue
+            ids: set[int] = {i.item_id}
+            if getattr(i, "item_id2", None):
+                ids.add(i.item_id2)
+            if len(ids) >= 2 and frozenset(ids).issubset(char_emb_ids):
+                matched_rank = i.rank
+                matched_archon_name = i.item_name
                 break
 
     status = "green" if (matched_rank is not None and matched_rank <= 3) else "yellow"
     reason = None if status == "green" else "Combo not in top-3 for this spec"
-    names  = [n.title() for item in emb_items for n in item.get("spell_names", [])]
+
+    if matched_archon_name:
+        names = [p.strip() for p in matched_archon_name.split(" / ")]
+    else:
+        names = [n.title() for item in emb_items for n in item.get("spell_names", [])]
+
     return {"status": status, "reason": reason, "count": count, "names": names, "rank": matched_rank}
 
 
@@ -800,27 +868,22 @@ def _check_embellishments(items: list, popular_items: list, policy: str, member_
     if policy == "none":
         return {"pass": True, "failing": [], "na": False}
 
+    emb_items = [i for i in items if i.get("is_embellished")]
+    count = len(emb_items)
+
     if policy == "any":
-        count = sum(1 for i in items if i.get("is_embellished"))
         if count >= 2:
             return {"pass": True, "failing": [], "na": False}
         msg = "No embellishments equipped" if count == 0 else "Only 1/2 embellishments equipped"
         return {"pass": False, "failing": [msg], "na": False}
 
-    # top3: character's pair of embellishments must exactly match one of the top-3 combos.
-    # Two matching strategies:
-    #   - Name match: combo name parts (split by " / ") vs embellishment spell names on equipped items.
-    #     Works for applied embellishments like "Arcanoweave Lining".
-    #   - ID match: combo item_id / item_id2 vs the equipped item's item_id.
-    #     Works for intrinsic-embellishment items like "World Tender's Rootslippers" whose
-    #     spell name doesn't match the archon item name.
-    top3_name_combos: list[frozenset[str]] = []
+    # top3 — Counter combos handle "A / A" correctly (requires count >= 2, not just >= 1)
+    top3_name_combos: list[Counter] = []
     top3_id_combos: list[frozenset[int]] = []
     for i in popular_items:
         if not i.is_embellishment or i.rank > 3:
             continue
-        parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
-        top3_name_combos.append(parts)
+        top3_name_combos.append(Counter(p.strip().lower() for p in i.item_name.split(" / ")))
         ids: set[int] = {i.item_id}
         if getattr(i, "item_id2", None):
             ids.add(i.item_id2)
@@ -830,31 +893,37 @@ def _check_embellishments(items: list, popular_items: list, policy: str, member_
     if not top3_name_combos:
         return {"pass": False, "failing": [], "na": True}
 
-    char_emb_names: set[str] = set()
-    char_emb_ids: set[int] = set()
-    for item in items:
-        if item.get("is_embellished"):
-            char_emb_names.update(item.get("spell_names", []))
-            if item.get("item_id"):
-                char_emb_ids.add(item["item_id"])
+    if count < 2:
+        msg = "No embellishments equipped" if count == 0 else "Only 1/2 embellishments equipped"
+        return {"pass": False, "failing": [msg], "na": False}
 
-    name_match = any(combo.issubset(char_emb_names) for combo in top3_name_combos)
+    known_parts, name_by_id = _build_emb_known(popular_items)
+
+    char_emb_counter: Counter = Counter()
+    char_emb_ids: set[int] = set()
+    for item in emb_items:
+        name = _canonical_emb_name(item, known_parts, name_by_id)
+        if name:
+            char_emb_counter[name] += 1
+        if item.get("item_id"):
+            char_emb_ids.add(item["item_id"])
+        for gid in item.get("gem_ids", []):
+            if gid in name_by_id:
+                char_emb_ids.add(gid)
+
+    name_match = any(
+        all(char_emb_counter[k] >= v for k, v in combo.items())
+        for combo in top3_name_combos
+    )
     id_match = bool(top3_id_combos) and any(combo.issubset(char_emb_ids) for combo in top3_id_combos)
 
-    logger.debug(
-        "[emb-check] %s | top3_name_combos=%s | top3_id_combos=%s | "
-        "char_emb_names=%s | char_emb_ids=%s | name_match=%s | id_match=%s",
-        member_name, top3_name_combos, top3_id_combos,
-        char_emb_names, char_emb_ids, name_match, id_match,
+    logger.info(
+        "[emb-check] %s | char_emb_counter=%s | char_emb_ids=%s | name_match=%s | id_match=%s",
+        member_name, char_emb_counter, char_emb_ids, name_match, id_match,
     )
 
     if name_match or id_match:
         return {"pass": True, "failing": [], "na": False}
-
-    emb_count = sum(1 for i in items if i.get("is_embellished"))
-    if emb_count < 2:
-        msg = "No embellishments equipped" if emb_count == 0 else "Only 1/2 embellishments equipped"
-        return {"pass": False, "failing": [msg], "na": False}
     return {"pass": False, "failing": ["Embellishment combo not in top-3 for this spec"], "na": False}
 
 

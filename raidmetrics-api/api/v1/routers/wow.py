@@ -13,7 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ...dal.db import get_db
-from ...dal.models import RaidRoster, User, WowItemIcon
+from ...dal.models import RaidRoster, User, UserCharacter, WowItemIcon
 from ...dal.redis import get_redis
 from ..auth import get_current_user
 from ..battlenet import REGION, battlenet_client
@@ -125,6 +125,7 @@ async def _fetch_full_guild_roster(client, realm_slug: str, guild_slug: str) -> 
 @router.get("/characters", tags=["WoW"])
 async def get_characters(
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Any:
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
@@ -240,6 +241,19 @@ async def get_characters(
         })
 
     characters.sort(key=lambda c: c["level"], reverse=True)
+
+    db.query(UserCharacter).filter(UserCharacter.user_id == current_user.id).delete()
+    for c in characters:
+        db.add(UserCharacter(
+            user_id=current_user.id,
+            character_name=c["name"],
+            realm_slug=c["realm_slug"],
+            guild_id=c["guild_id"],
+            is_gm=c["is_gm"],
+            is_officer=c["is_officer"],
+        ))
+    db.commit()
+
     await redis.setex(cache_key, CHARACTERS_CACHE_TTL, json.dumps(characters))
     return {"characters": characters}
 
@@ -273,7 +287,7 @@ async def bust_guild_roster_cache(
     guild_id: int,
     current_user: User = Depends(get_current_user),
 ) -> Any:
-    await assert_guild_member(guild_id, current_user)
+    assert_guild_member(guild_id, current_user)
     redis = get_redis()
     await redis.delete(f"wow:guild-roster:{guild_id}")
     return {"cleared": True}
@@ -502,7 +516,7 @@ async def get_roster_equipment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
-    await assert_guild_member(guild_id, current_user)
+    assert_guild_member(guild_id, current_user)
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
     if difficulty not in {"normal", "heroic", "mythic"}:
@@ -859,7 +873,7 @@ async def roster_check(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
-    await assert_guild_member(body.guild_id, current_user)
+    assert_guild_member(body.guild_id, current_user)
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
     if body.difficulty not in {"normal", "heroic", "mythic"}:

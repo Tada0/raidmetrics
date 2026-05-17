@@ -78,15 +78,26 @@ export interface GuildMember {
   is_officer: boolean;
 }
 
-interface GearCheckResult {
-  pass: boolean;
-  failing: string[];
-  na: boolean;
+export type GearStatus = 'green' | 'yellow' | 'red';
+
+export interface EnchantDetail {
+  slot: string;
+  status: GearStatus;
+  enchant: string | null;
+  reason: string | null;
 }
 
-export interface GearCheckPolicy {
-  any: GearCheckResult;
-  top3: GearCheckResult;
+export interface GemDetail {
+  slot: string;
+  status: GearStatus;
+  reason: string | null;
+}
+
+export interface EmbellishmentDetail {
+  status: GearStatus;
+  reason: string | null;
+  count: number;
+  names: string[];
 }
 
 export interface CharacterGearCheck {
@@ -95,9 +106,9 @@ export interface CharacterGearCheck {
   class: string;
   equipped_item_level: number;
   spec_found: boolean;
-  enchants: GearCheckPolicy;
-  gems: GearCheckPolicy;
-  embellishments: GearCheckPolicy;
+  enchants: EnchantDetail[] | null;
+  gems: GemDetail[] | null;
+  embellishments: EmbellishmentDetail | null;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -24,8 +24,8 @@
     <div class="flex justify-center">
       <div class="flex flex-col">
 
-        <!-- pr-52 = stats width (w-44=176px) + gap (gap-8=32px), keeps text-center over the armory -->
-        <div class="text-center mb-8 pr-52">
+        <!-- pl-48 = gear-check width (w-40) + gap-8, pr-52 = stats width (w-44) + gap-8 -->
+        <div class="text-center mb-8 pl-48 pr-52">
           <h1 class="text-2xl font-bold text-text">{{ d.name }}</h1>
           <p class="text-muted text-sm mt-1">
             {{ d.spec ? d.spec + ' ' : '' }}{{ d.class }} · {{ d.race }} · Level {{ d.level }}
@@ -37,6 +37,61 @@
 
         <!-- Gear columns + stats sidebar row -->
         <div class="flex gap-8 items-start">
+
+          <!-- Gear check summary -->
+          @if (gearCheck(); as gc) {
+            <div class="flex flex-col gap-3 shrink-0 w-40">
+
+              @if (gc.enchants) {
+                <div class="bg-surface border border-border rounded-lg p-3">
+                  <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Enchants</p>
+                  <div class="space-y-1">
+                    @for (e of gc.enchants; track e.slot) {
+                      <div class="flex items-center gap-2 text-xs" [title]="e.reason ?? ''">
+                        <span class="font-bold shrink-0" [class]="statusClass(e.status)">{{ statusIcon(e.status) }}</span>
+                        <span class="text-muted truncate">{{ e.slot }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (gc.gems) {
+                <div class="bg-surface border border-border rounded-lg p-3">
+                  <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Gems</p>
+                  @if (gc.gems.length === 0) {
+                    <p class="text-xs text-muted">No sockets</p>
+                  } @else {
+                    <div class="space-y-1">
+                      @for (g of gc.gems; track g.slot) {
+                        <div class="flex items-center gap-2 text-xs" [title]="g.reason ?? ''">
+                          <span class="font-bold shrink-0" [class]="statusClass(g.status)">{{ statusIcon(g.status) }}</span>
+                          <span class="text-muted truncate">{{ g.slot }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (gc.embellishments) {
+                <div class="bg-surface border border-border rounded-lg p-3">
+                  <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Embellishments</p>
+                  <div class="flex items-start gap-2 text-xs" [title]="gc.embellishments.reason ?? ''">
+                    <span class="font-bold shrink-0 mt-px" [class]="statusClass(gc.embellishments.status)">{{ statusIcon(gc.embellishments.status) }}</span>
+                    <span class="text-muted leading-snug">
+                      @if (gc.embellishments.names.length > 0) {
+                        {{ gc.embellishments.names.join(' / ') }}
+                      } @else {
+                        {{ gc.embellishments.count }}/2 equipped
+                      }
+                    </span>
+                  </div>
+                </div>
+              }
+
+            </div>
+          }
 
           <!-- Armory: 3 gear columns -->
           <div class="flex gap-6 items-start">
@@ -190,36 +245,9 @@
 
         </div>
 
-        <!-- Gear check summary -->
-        @if (gearCheck(); as gc) {
-          <div class="flex justify-center gap-4 mt-6 pr-52">
-            @for (item of [
-              { label: 'Enchants',      policy: gc.enchants },
-              { label: 'Gems',          policy: gc.gems },
-              { label: 'Embellishments', policy: gc.embellishments }
-            ]; track item.label) {
-              @let status = gearStatus(item.policy);
-              @let tooltip = gearTooltip(item.policy);
-              <div
-                class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium"
-                [class]="status === 'green'  ? 'bg-green-400/10 border-green-400/30 text-green-400' :
-                         status === 'yellow' ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' :
-                         status === 'red'    ? 'bg-danger/10 border-danger/30 text-danger' :
-                                              'bg-surface border-border text-muted'"
-                [title]="tooltip"
-              >
-                <span class="text-base leading-none">
-                  {{ status === 'green' ? '✓' : status === 'yellow' ? '⚠' : status === 'red' ? '✗' : '—' }}
-                </span>
-                {{ item.label }}
-              </div>
-            }
-          </div>
-        }
-
-        <!-- Weapon slots centered under the armory (pr-52 keeps justify-center over armory width) -->
+        <!-- Weapon slots centered under the armory -->
         @if (weaponItems().length > 0) {
-          <div class="flex justify-center gap-4 mt-4 pr-52">
+          <div class="flex justify-center gap-4 mt-4 pl-48 pr-52">
             @for (item of weaponItems(); track item.slot_type) {
               <a
                 [href]="wowheadHref(item)"

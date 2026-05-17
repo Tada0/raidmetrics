@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BisService } from '../../services/bis.service';
 import { CharacterSelectionService } from '../../services/character-selection.service';
-import { CharacterDetail, CharacterGearCheck, CharacterItem, GearCheckPolicy, WowService } from '../../services/wow.service';
+import { CharacterDetail, CharacterGearCheck, CharacterItem, GearStatus, WowService } from '../../services/wow.service';
 
 const LEFT_SLOTS  = ['HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'SHIRT', 'TABARD', 'WRIST'];
 const RIGHT_SLOTS = ['HANDS', 'WAIST', 'LEGS', 'FEET', 'FINGER_1', 'FINGER_2', 'TRINKET_1', 'TRINKET_2'];
@@ -102,16 +102,13 @@ export class CharacterDetailComponent {
     });
   }
 
-  gearStatus(policy: GearCheckPolicy): 'green' | 'yellow' | 'red' | 'na' {
-    if (policy.any.na) return 'na';
-    if (policy.top3.pass) return 'green';
-    if (policy.any.pass) return 'yellow';
-    return 'red';
+  statusIcon(status: GearStatus): string {
+    return status === 'green' ? '✓' : status === 'yellow' ? '⚠' : '✗';
   }
 
-  gearTooltip(policy: GearCheckPolicy): string {
-    const failing = policy.top3.failing.length ? policy.top3.failing : policy.any.failing;
-    return failing.join('\n');
+  statusClass(status: GearStatus): string {
+    return status === 'green'  ? 'text-green-400' :
+           status === 'yellow' ? 'text-yellow-400' : 'text-danger';
   }
 
   private _itemMap(): Map<string, CharacterItem> {

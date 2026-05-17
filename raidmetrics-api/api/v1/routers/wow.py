@@ -562,6 +562,115 @@ def _norm_slot(slot: str) -> str:
     return slot.lower().replace(" ", "-")
 
 
+# ── Per-slot detail helpers for the character gear-check page ──────────────
+
+def _detail_enchants(items: list, enchants: list) -> list[dict]:
+    by_slot: dict[str, list] = defaultdict(list)
+    for e in enchants:
+        by_slot[_norm_slot(e.slot)].append(e)
+    known_slots = set(by_slot.keys())
+    if not known_slots:
+        return []
+
+    results = []
+    for item in items:
+        enchant_slot = _resolve_enchant_slot(item["slot_type"], known_slots)
+        if not enchant_slot:
+            continue
+
+        char_ids: set[int] = set()
+        if item.get("enchantment_id"):
+            char_ids.add(item["enchantment_id"])
+        if item.get("enchant_item_id"):
+            char_ids.add(item["enchant_item_id"])
+        display = item.get("enchant_display_name", "")
+
+        if not char_ids and not display:
+            results.append({"slot": item["slot"], "status": "red", "enchant": None, "reason": "Not enchanted"})
+            continue
+
+        all_popular   = by_slot[enchant_slot]
+        top3_ids      = {e.enchant_id for e in all_popular if e.rank <= 3}
+        top3_names    = {e.enchant_name.lower() for e in all_popular if e.rank <= 3}
+        all_ids       = {e.enchant_id for e in all_popular}
+        all_names     = {e.enchant_name.lower() for e in all_popular}
+
+        def _matches(ids: set[int], names: set[str]) -> bool:
+            return bool(char_ids & ids) or bool(display and any(display == n or n in display for n in names))
+
+        if _matches(top3_ids, top3_names):
+            status, reason = "green", None
+        elif _matches(all_ids, all_names):
+            status, reason = "yellow", "Not top-3 popular"
+        else:
+            status, reason = "red", "Not a popular enchant"
+
+        results.append({"slot": item["slot"], "status": status, "enchant": display or None, "reason": reason})
+    return results
+
+
+def _detail_gems(items: list, gems: list) -> list[dict]:
+    top_epic_ids    = {g.item_id for g in gems if g.gem_quality == "epic" and g.rank <= 3}
+    top_rare_ids    = {g.item_id for g in gems if g.gem_quality == "rare" and g.rank <= 3}
+    all_popular_ids = {g.item_id for g in gems}
+
+    results = []
+    for item in items:
+        socket_count = item.get("socket_count", 0)
+        if not socket_count:
+            continue
+        gem_ids: list[int] = item.get("gem_ids", [])
+        if len(gem_ids) < socket_count:
+            results.append({"slot": item["slot"], "status": "red", "reason": "Empty socket"})
+            continue
+        if all(gid in top_epic_ids or gid in top_rare_ids for gid in gem_ids):
+            status, reason = "green", None
+        elif all(gid in all_popular_ids for gid in gem_ids):
+            status, reason = "yellow", "Not top-3 popular"
+        else:
+            status, reason = "red", "Not a popular gem"
+        results.append({"slot": item["slot"], "status": status, "reason": reason})
+    return results
+
+
+def _detail_embellishments(items: list, popular_items: list) -> dict:
+    emb_items = [i for i in items if i.get("is_embellished")]
+    count = len(emb_items)
+
+    if count == 0:
+        return {"status": "red", "reason": "No embellishments equipped", "count": 0}
+    if count == 1:
+        return {"status": "red", "reason": "Only 1/2 embellishments equipped", "count": 1}
+
+    top3_name_combos: list[frozenset[str]] = []
+    top3_id_combos: list[frozenset[int]] = []
+    for i in popular_items:
+        if not i.is_embellishment or i.rank > 3:
+            continue
+        parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
+        top3_name_combos.append(parts)
+        ids: set[int] = {i.item_id}
+        if getattr(i, "item_id2", None):
+            ids.add(i.item_id2)
+        if len(ids) >= 2:
+            top3_id_combos.append(frozenset(ids))
+
+    char_emb_names: set[str] = set()
+    char_emb_ids: set[int] = set()
+    for item in emb_items:
+        char_emb_names.update(item.get("spell_names", []))
+        if item.get("item_id"):
+            char_emb_ids.add(item["item_id"])
+
+    name_match = any(combo.issubset(char_emb_names) for combo in top3_name_combos)
+    id_match   = bool(top3_id_combos) and any(combo.issubset(char_emb_ids) for combo in top3_id_combos)
+
+    status = "green" if (name_match or id_match) else "yellow"
+    reason = None if status == "green" else "Combo not in top-3 for this spec"
+    names  = [n for item in emb_items for n in item.get("spell_names", [])]
+    return {"status": status, "reason": reason, "count": count, "names": names}
+
+
 def _resolve_enchant_slot(slot_type: str, known_slots: set[str]) -> str | None:
     for candidate in _ENCHANT_SLOT_CANDIDATES.get(slot_type, []):
         if candidate in known_slots:
@@ -899,21 +1008,13 @@ async def character_gear_check(
             WHERE snapshot_id = :sid ORDER BY rank
         """), {"sid": sid}).fetchall()
 
-    def check(fn, *args_any, top3_arg):
-        result_any  = fn(*args_any, "any")
-        result_top3 = fn(*args_any, top3_arg)
-        return {"any": result_any, "top3": result_top3}
-
-    na = {"any": {"pass": False, "failing": [], "na": True},
-          "top3": {"pass": False, "failing": [], "na": True}}
-
     return {
-        "name":                 member.get("name"),
-        "spec":                 spec or None,
-        "class":                cls,
-        "equipped_item_level":  member.get("equipped_item_level", 0),
-        "spec_found":           spec_found,
-        "enchants":     check(_check_enchants,      items, enchants_data, top3_arg="top3") if spec_found else na,
-        "gems":         check(_check_gems,           items, gems_data,     top3_arg="top_gems") if spec_found else na,
-        "embellishments": check(_check_embellishments, items, items_data,  top3_arg="top3") if spec_found else na,
+        "name":                member.get("name"),
+        "spec":                spec or None,
+        "class":               cls,
+        "equipped_item_level": member.get("equipped_item_level", 0),
+        "spec_found":          spec_found,
+        "enchants":            _detail_enchants(items, enchants_data) if spec_found else None,
+        "gems":                _detail_gems(items, gems_data)         if spec_found else None,
+        "embellishments":      _detail_embellishments(items, items_data) if spec_found else None,
     }

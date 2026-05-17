@@ -10,6 +10,7 @@ from ...dal.db import get_db
 from ...dal.models import RaidRoster, RaidRosterMember, User
 from ...dal.redis import get_redis
 from ..auth import get_current_user
+from ..permissions import assert_guild_officer
 
 DIFFICULTIES = {"normal", "heroic", "mythic"}
 ROSTER_SIZE_LIMITS: dict[str, int] = {"normal": 30, "heroic": 30, "mythic": 20}
@@ -72,6 +73,8 @@ async def update_raid_roster(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
+    await assert_guild_officer(guild_id, current_user)
+
     if difficulty not in DIFFICULTIES:
         raise HTTPException(status_code=400, detail="Invalid difficulty")
 

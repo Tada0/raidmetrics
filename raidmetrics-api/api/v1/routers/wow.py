@@ -17,6 +17,7 @@ from ...dal.models import RaidRoster, User, WowItemIcon
 from ...dal.redis import get_redis
 from ..auth import get_current_user
 from ..battlenet import REGION, battlenet_client
+from ..permissions import assert_any_officer, assert_guild_member
 
 CHARACTERS_CACHE_TTL = 300  # 5 minutes
 GUILD_ROSTER_CACHE_TTL = 300  # 5 minutes
@@ -272,6 +273,7 @@ async def bust_guild_roster_cache(
     guild_id: int,
     current_user: User = Depends(get_current_user),
 ) -> Any:
+    await assert_guild_member(guild_id, current_user)
     redis = get_redis()
     await redis.delete(f"wow:guild-roster:{guild_id}")
     return {"cleared": True}
@@ -500,6 +502,7 @@ async def get_roster_equipment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
+    await assert_guild_member(guild_id, current_user)
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
     if difficulty not in {"normal", "heroic", "mythic"}:
@@ -856,6 +859,7 @@ async def roster_check(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
+    await assert_guild_member(body.guild_id, current_user)
     if not current_user.blizzard_access_token:
         raise HTTPException(status_code=401, detail="battlenet_token_expired")
     if body.difficulty not in {"normal", "heroic", "mythic"}:

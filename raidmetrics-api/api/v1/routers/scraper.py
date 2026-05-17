@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ...dal.models import User
 from ..auth import get_current_user
+from ..permissions import assert_any_officer
 
 SCRAPER_URL = os.getenv("SCRAPER_URL", "http://scraper:8001")
 
@@ -41,4 +42,5 @@ async def scrape_status(current_user: User = Depends(get_current_user)) -> Any:
 
 @router.post("/trigger", tags=["Scraper"])
 async def trigger_scrape(current_user: User = Depends(get_current_user)) -> Any:
+    await assert_any_officer(current_user)
     return await _scraper_post("/trigger")

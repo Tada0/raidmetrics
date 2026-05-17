@@ -44,26 +44,6 @@ def _roster_response(roster: RaidRoster) -> dict:
     }
 
 
-async def _assert_officer(user_id: int, guild_id: int) -> None:
-    redis = get_redis()
-    cached = await redis.get(f"wow:characters:{user_id}")
-    if not cached:
-        raise HTTPException(
-            status_code=403,
-            detail="Character data not loaded. Visit the Characters page first.",
-        )
-    characters = json.loads(cached)
-    authorized = any(
-        c.get("guild_id") == guild_id and (c.get("is_gm") or c.get("is_officer"))
-        for c in characters
-    )
-    if not authorized:
-        raise HTTPException(
-            status_code=403,
-            detail="You must be a GM or Officer of this guild to edit the roster.",
-        )
-
-
 @router.get("/{guild_id}/{difficulty}", tags=["Raid Roster"])
 async def get_raid_roster(
     guild_id: int,
@@ -101,8 +81,6 @@ async def update_raid_roster(
             status_code=422,
             detail=f"{difficulty.capitalize()} roster cannot exceed {limit} members.",
         )
-
-    await _assert_officer(current_user.id, guild_id)
 
     roster = (
         db.query(RaidRoster)

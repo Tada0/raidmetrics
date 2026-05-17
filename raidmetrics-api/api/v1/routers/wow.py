@@ -666,27 +666,30 @@ def _check_embellishments(items: list, popular_items: list, policy: str) -> dict
             return {"pass": True, "failing": [], "na": False}
         return {"pass": False, "failing": [f"Only {count}/2 embellishments equipped"], "na": False}
 
-    # top3: 2 embellished items whose spell name matches a top-3 spec embellishment name
-    top3_names = {i.item_name.lower().strip() for i in popular_items if i.is_embellishment and i.rank <= 3}
-    if not top3_names:
+    # top3: character's pair of embellishments must exactly match one of the top-3 combos.
+    # item_name is stored as "Name1 / Name2", so each combo becomes a frozenset of two names.
+    top3_combos: list[frozenset[str]] = []
+    for i in popular_items:
+        if i.is_embellishment and i.rank <= 3:
+            parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
+            top3_combos.append(parts)
+
+    if not top3_combos:
         return {"pass": False, "failing": [], "na": True}
 
-    def has_top3_emb(item: dict) -> bool:
-        if not item.get("is_embellished"):
-            return False
-        return any(name in top3_names for name in item.get("spell_names", []))
+    # Collect all embellishment spell names the character has equipped
+    char_emb_names: set[str] = set()
+    for item in items:
+        if item.get("is_embellished"):
+            char_emb_names.update(item.get("spell_names", []))
 
-    qualifying = [i for i in items if has_top3_emb(i)]
-    count = len(qualifying)
-    if count >= 2:
+    if any(combo.issubset(char_emb_names) for combo in top3_combos):
         return {"pass": True, "failing": [], "na": False}
 
-    failing: list[str] = []
-    if count == 0:
-        failing.append("No top-3 spec embellishments equipped")
-    else:
-        failing.append(f"Only 1/2 top-3 spec embellishments ({qualifying[0]['slot']} qualifies)")
-    return {"pass": False, "failing": failing, "na": False}
+    emb_count = sum(1 for i in items if i.get("is_embellished"))
+    if emb_count < 2:
+        return {"pass": False, "failing": [f"Only {emb_count}/2 embellishments equipped"], "na": False}
+    return {"pass": False, "failing": ["Embellishment combo not in top-3 for this spec"], "na": False}
 
 
 class RosterCheckRequest(BaseModel):
@@ -718,7 +721,7 @@ async def roster_check(
         return {"members": []}
 
     role_map = {
-        (m.character_name.lower(), m.character_realm.lower()): m.role
+        m.character_name.lower(): m.role
         for m in roster.members
     }
 
@@ -801,7 +804,7 @@ async def roster_check(
             else na_result
         )
 
-        name_key = (member.get("name", "").lower(), member.get("realm", "").lower())
+        name_key = member.get("name", "").lower()
         output.append({
             "name": member.get("name"),
             "realm": member.get("realm"),

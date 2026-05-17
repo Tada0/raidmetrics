@@ -656,7 +656,7 @@ def _check_gems(items: list, gems: list, policy: str) -> dict:
     return {"pass": len(failing) == 0, "failing": failing, "na": False}
 
 
-def _check_embellishments(items: list, popular_items: list, policy: str) -> dict:
+def _check_embellishments(items: list, popular_items: list, policy: str, member_name: str = "") -> dict:
     if policy == "none":
         return {"pass": True, "failing": [], "na": False}
 
@@ -667,23 +667,47 @@ def _check_embellishments(items: list, popular_items: list, policy: str) -> dict
         return {"pass": False, "failing": [f"Only {count}/2 embellishments equipped"], "na": False}
 
     # top3: character's pair of embellishments must exactly match one of the top-3 combos.
-    # item_name is stored as "Name1 / Name2", so each combo becomes a frozenset of two names.
-    top3_combos: list[frozenset[str]] = []
+    # Two matching strategies:
+    #   - Name match: combo name parts (split by " / ") vs embellishment spell names on equipped items.
+    #     Works for applied embellishments like "Arcanoweave Lining".
+    #   - ID match: combo item_id / item_id2 vs the equipped item's item_id.
+    #     Works for intrinsic-embellishment items like "World Tender's Rootslippers" whose
+    #     spell name doesn't match the archon item name.
+    top3_name_combos: list[frozenset[str]] = []
+    top3_id_combos: list[frozenset[int]] = []
     for i in popular_items:
-        if i.is_embellishment and i.rank <= 3:
-            parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
-            top3_combos.append(parts)
+        if not i.is_embellishment or i.rank > 3:
+            continue
+        parts = frozenset(p.strip() for p in i.item_name.lower().split(" / "))
+        top3_name_combos.append(parts)
+        ids: set[int] = {i.item_id}
+        if getattr(i, "item_id2", None):
+            ids.add(i.item_id2)
+        if len(ids) >= 2:
+            top3_id_combos.append(frozenset(ids))
 
-    if not top3_combos:
+    if not top3_name_combos:
         return {"pass": False, "failing": [], "na": True}
 
-    # Collect all embellishment spell names the character has equipped
     char_emb_names: set[str] = set()
+    char_emb_ids: set[int] = set()
     for item in items:
         if item.get("is_embellished"):
             char_emb_names.update(item.get("spell_names", []))
+            if item.get("item_id"):
+                char_emb_ids.add(item["item_id"])
 
-    if any(combo.issubset(char_emb_names) for combo in top3_combos):
+    name_match = any(combo.issubset(char_emb_names) for combo in top3_name_combos)
+    id_match = bool(top3_id_combos) and any(combo.issubset(char_emb_ids) for combo in top3_id_combos)
+
+    logger.debug(
+        "[emb-check] %s | top3_name_combos=%s | top3_id_combos=%s | "
+        "char_emb_names=%s | char_emb_ids=%s | name_match=%s | id_match=%s",
+        member_name, top3_name_combos, top3_id_combos,
+        char_emb_names, char_emb_ids, name_match, id_match,
+    )
+
+    if name_match or id_match:
         return {"pass": True, "failing": [], "na": False}
 
     emb_count = sum(1 for i in items if i.get("is_embellished"))
@@ -782,7 +806,7 @@ async def roster_check(
             """), {"sid": sid}).fetchall()
 
             items_data = db.execute(text("""
-                SELECT rank, item_id, item_name, is_embellishment FROM archon_popular_items
+                SELECT rank, item_id, item_id2, item_name, is_embellishment FROM archon_popular_items
                 WHERE snapshot_id = :sid ORDER BY rank
             """), {"sid": sid}).fetchall()
 
@@ -799,7 +823,7 @@ async def roster_check(
             else na_result
         )
         emb_res = (
-            _check_embellishments(items, items_data, body.embellish_policy)
+            _check_embellishments(items, items_data, body.embellish_policy, member.get("name", ""))
             if (spec_found or body.embellish_policy in ("none", "any"))
             else na_result
         )

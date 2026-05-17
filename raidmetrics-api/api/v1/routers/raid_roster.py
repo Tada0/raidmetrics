@@ -73,7 +73,7 @@ async def update_raid_roster(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
-    await assert_guild_officer(guild_id, current_user)
+    assert_guild_officer(guild_id, current_user)
 
     if difficulty not in DIFFICULTIES:
         raise HTTPException(status_code=400, detail="Invalid difficulty")

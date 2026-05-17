@@ -42,5 +42,5 @@ async def scrape_status(current_user: User = Depends(get_current_user)) -> Any:
 
 @router.post("/trigger", tags=["Scraper"])
 async def trigger_scrape(current_user: User = Depends(get_current_user)) -> Any:
-    await assert_any_officer(current_user)
+    assert_any_officer(current_user)
     return await _scraper_post("/trigger")

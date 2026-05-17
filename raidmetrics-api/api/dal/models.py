@@ -44,6 +44,20 @@ class RefreshToken(Base):
     user = relationship("User", back_populates="refresh_tokens")
 
 
+class UserCharacter(Base):
+    __tablename__ = "user_characters"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    character_name = Column(String, nullable=False)
+    realm_slug = Column(String, nullable=False)
+    guild_id = Column(BigInteger, nullable=True)
+    is_gm = Column(Boolean, default=False)
+    is_officer = Column(Boolean, default=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("user_id", "character_name", "realm_slug"),)
+
+
 class RaidRoster(Base):
     __tablename__ = "raid_rosters"
     id = Column(Integer, primary_key=True, index=True)

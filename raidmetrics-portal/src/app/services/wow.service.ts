@@ -78,6 +78,28 @@ export interface GuildMember {
   is_officer: boolean;
 }
 
+interface GearCheckResult {
+  pass: boolean;
+  failing: string[];
+  na: boolean;
+}
+
+export interface GearCheckPolicy {
+  any: GearCheckResult;
+  top3: GearCheckResult;
+}
+
+export interface CharacterGearCheck {
+  name: string;
+  spec: string | null;
+  class: string;
+  equipped_item_level: number;
+  spec_found: boolean;
+  enchants: GearCheckPolicy;
+  gems: GearCheckPolicy;
+  embellishments: GearCheckPolicy;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WowService {
   private http = inject(HttpClient);
@@ -94,6 +116,12 @@ export class WowService {
 
   getCharacterDetail(realmSlug: string, characterName: string): Observable<CharacterDetail> {
     return this.http.get<CharacterDetail>('/api/v1/wow/character-detail', {
+      params: { realm_slug: realmSlug, character_name: characterName },
+    });
+  }
+
+  getCharacterGearCheck(realmSlug: string, characterName: string): Observable<CharacterGearCheck> {
+    return this.http.get<CharacterGearCheck>('/api/v1/wow/character-gear-check', {
       params: { realm_slug: realmSlug, character_name: characterName },
     });
   }

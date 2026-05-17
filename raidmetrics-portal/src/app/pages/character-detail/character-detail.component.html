@@ -190,6 +190,33 @@
 
         </div>
 
+        <!-- Gear check summary -->
+        @if (gearCheck(); as gc) {
+          <div class="flex justify-center gap-4 mt-6 pr-52">
+            @for (item of [
+              { label: 'Enchants',      policy: gc.enchants },
+              { label: 'Gems',          policy: gc.gems },
+              { label: 'Embellishments', policy: gc.embellishments }
+            ]; track item.label) {
+              @let status = gearStatus(item.policy);
+              @let tooltip = gearTooltip(item.policy);
+              <div
+                class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium"
+                [class]="status === 'green'  ? 'bg-green-400/10 border-green-400/30 text-green-400' :
+                         status === 'yellow' ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' :
+                         status === 'red'    ? 'bg-danger/10 border-danger/30 text-danger' :
+                                              'bg-surface border-border text-muted'"
+                [title]="tooltip"
+              >
+                <span class="text-base leading-none">
+                  {{ status === 'green' ? '✓' : status === 'yellow' ? '⚠' : status === 'red' ? '✗' : '—' }}
+                </span>
+                {{ item.label }}
+              </div>
+            }
+          </div>
+        }
+
         <!-- Weapon slots centered under the armory (pr-52 keeps justify-center over armory width) -->
         @if (weaponItems().length > 0) {
           <div class="flex justify-center gap-4 mt-4 pr-52">

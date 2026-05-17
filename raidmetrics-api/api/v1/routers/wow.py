@@ -664,7 +664,8 @@ def _check_embellishments(items: list, popular_items: list, policy: str, member_
         count = sum(1 for i in items if i.get("is_embellished"))
         if count >= 2:
             return {"pass": True, "failing": [], "na": False}
-        return {"pass": False, "failing": [f"Only {count}/2 embellishments equipped"], "na": False}
+        msg = "No embellishments equipped" if count == 0 else "Only 1/2 embellishments equipped"
+        return {"pass": False, "failing": [msg], "na": False}
 
     # top3: character's pair of embellishments must exactly match one of the top-3 combos.
     # Two matching strategies:
@@ -712,7 +713,8 @@ def _check_embellishments(items: list, popular_items: list, policy: str, member_
 
     emb_count = sum(1 for i in items if i.get("is_embellished"))
     if emb_count < 2:
-        return {"pass": False, "failing": [f"Only {emb_count}/2 embellishments equipped"], "na": False}
+        msg = "No embellishments equipped" if emb_count == 0 else "Only 1/2 embellishments equipped"
+        return {"pass": False, "failing": [msg], "na": False}
     return {"pass": False, "failing": ["Embellishment combo not in top-3 for this spec"], "na": False}
 
 
@@ -843,3 +845,75 @@ async def roster_check(
         })
 
     return {"members": output}
+
+
+@router.get("/character-gear-check", tags=["WoW"])
+async def character_gear_check(
+    realm_slug: str,
+    character_name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+
+    sem = asyncio.Semaphore(1)
+    async with battlenet_client(current_user.blizzard_access_token) as client:
+        member = await _fetch_roster_member_equipment(client, sem, realm_slug.lower(), character_name)
+
+    if not member:
+        raise HTTPException(status_code=404, detail="Character not found or unavailable")
+
+    spec      = member.get("spec") or ""
+    cls       = member.get("class") or ""
+    spec_slug = spec.lower().replace(" ", "-")
+    cls_slug  = cls.lower().replace(" ", "-")
+    items     = member.get("items", [])
+
+    snapshot_row = db.execute(text("""
+        SELECT s.id FROM archon_spec_snapshots s
+        JOIN archon_scrape_runs r ON r.id = s.run_id
+        WHERE r.success = true AND s.spec_slug = :spec AND s.class_slug = :cls
+        ORDER BY s.scraped_at DESC LIMIT 1
+    """), {"spec": spec_slug, "cls": cls_slug}).fetchone()
+
+    enchants_data: list = []
+    gems_data: list     = []
+    items_data: list    = []
+    spec_found = bool(snapshot_row)
+
+    if snapshot_row:
+        sid = snapshot_row.id
+        enchants_data = db.execute(text("""
+            SELECT slot, rank, enchant_id, enchant_name FROM archon_popular_enchants
+            WHERE snapshot_id = :sid ORDER BY slot, rank
+        """), {"sid": sid}).fetchall()
+
+        gems_data = db.execute(text("""
+            SELECT gem_quality, rank, item_id FROM archon_popular_gems
+            WHERE snapshot_id = :sid ORDER BY gem_quality DESC, rank
+        """), {"sid": sid}).fetchall()
+
+        items_data = db.execute(text("""
+            SELECT rank, item_id, item_id2, item_name, is_embellishment FROM archon_popular_items
+            WHERE snapshot_id = :sid ORDER BY rank
+        """), {"sid": sid}).fetchall()
+
+    def check(fn, *args_any, top3_arg):
+        result_any  = fn(*args_any, "any")
+        result_top3 = fn(*args_any, top3_arg)
+        return {"any": result_any, "top3": result_top3}
+
+    na = {"any": {"pass": False, "failing": [], "na": True},
+          "top3": {"pass": False, "failing": [], "na": True}}
+
+    return {
+        "name":                 member.get("name"),
+        "spec":                 spec or None,
+        "class":                cls,
+        "equipped_item_level":  member.get("equipped_item_level", 0),
+        "spec_found":           spec_found,
+        "enchants":     check(_check_enchants,      items, enchants_data, top3_arg="top3") if spec_found else na,
+        "gems":         check(_check_gems,           items, gems_data,     top3_arg="top_gems") if spec_found else na,
+        "embellishments": check(_check_embellishments, items, items_data,  top3_arg="top3") if spec_found else na,
+    }

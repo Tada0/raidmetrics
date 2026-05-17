@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BisService } from '../../services/bis.service';
 import { CharacterSelectionService } from '../../services/character-selection.service';
-import { CharacterDetail, CharacterItem, WowService } from '../../services/wow.service';
+import { CharacterDetail, CharacterGearCheck, CharacterItem, GearCheckPolicy, WowService } from '../../services/wow.service';
 
 const LEFT_SLOTS  = ['HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'SHIRT', 'TABARD', 'WRIST'];
 const RIGHT_SLOTS = ['HANDS', 'WAIST', 'LEGS', 'FEET', 'FINGER_1', 'FINGER_2', 'TRINKET_1', 'TRINKET_2'];
@@ -40,6 +40,7 @@ export class CharacterDetailComponent {
 
   readonly char = computed(() => this.selection.selected());
   readonly detail = signal<CharacterDetail | null>(null);
+  readonly gearCheck = signal<CharacterGearCheck | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -90,10 +91,27 @@ export class CharacterDetailComponent {
   private _load(realmSlug: string, characterName: string): void {
     this.loading.set(true);
     this.error.set(null);
+    this.gearCheck.set(null);
     this.wow.getCharacterDetail(realmSlug, characterName).subscribe({
       next: data => { this.detail.set(data); this.loading.set(false); },
       error: () => { this.error.set('Failed to load character data.'); this.loading.set(false); },
     });
+    this.wow.getCharacterGearCheck(realmSlug, characterName).subscribe({
+      next: data => this.gearCheck.set(data),
+      error: () => {},
+    });
+  }
+
+  gearStatus(policy: GearCheckPolicy): 'green' | 'yellow' | 'red' | 'na' {
+    if (policy.any.na) return 'na';
+    if (policy.top3.pass) return 'green';
+    if (policy.any.pass) return 'yellow';
+    return 'red';
+  }
+
+  gearTooltip(policy: GearCheckPolicy): string {
+    const failing = policy.top3.failing.length ? policy.top3.failing : policy.any.failing;
+    return failing.join('\n');
   }
 
   private _itemMap(): Map<string, CharacterItem> {

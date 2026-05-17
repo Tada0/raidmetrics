@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TitleCasePipe } from '@angular/common';
@@ -26,6 +26,15 @@ interface MemberResult {
   enchants: CriterionResult;
   gems: CriterionResult;
   embellishments: CriterionResult;
+}
+
+interface CachedCheck {
+  results: MemberResult[];
+  ranEnchantPolicy: EnchantPolicy;
+  ranGemPolicy: GemPolicy;
+  ranEmbellishPolicy: EmbellishPolicy;
+  minIlvl: number;
+  checkedAt: string;
 }
 
 @Component({
@@ -61,7 +70,7 @@ export class RaidRosterCheckComponent {
       info: "The character must have 2 embellishments, both from the most popular embellishments for their spec, based on Archon.gg data." },
   ];
 
-  readonly selectedDifficulty = signal<Difficulty>('heroic');
+  readonly selectedDifficulty = signal<Difficulty>('mythic');
   readonly minIlvl = signal(275);
   readonly enchantPolicy = signal<EnchantPolicy>('none');
   readonly gemPolicy = signal<GemPolicy>('none');
@@ -70,12 +79,12 @@ export class RaidRosterCheckComponent {
   readonly loading = signal(false);
   readonly hasRan = signal(false);
   readonly results = signal<MemberResult[]>([]);
+  readonly checkedAt = signal<Date | null>(null);
 
   // Policies captured at run time — drive table columns so they don't shift on live changes
   readonly ranEnchantPolicy = signal<EnchantPolicy>('none');
   readonly ranGemPolicy = signal<GemPolicy>('none');
   readonly ranEmbellishPolicy = signal<EmbellishPolicy>('none');
-
 
   readonly guild = computed(() => {
     const c = this.selection.selected();
@@ -92,6 +101,20 @@ export class RaidRosterCheckComponent {
       r.ilvl.pass && r.enchants.pass && r.gems.pass && r.embellishments.pass
     ).length
   );
+
+  constructor() {
+    effect(() => {
+      const g = this.guild();
+      const diff = this.selectedDifficulty();
+      if (g?.guild_id != null) {
+        this._loadFromCache(g.guild_id, diff);
+      } else {
+        this.results.set([]);
+        this.hasRan.set(false);
+        this.checkedAt.set(null);
+      }
+    });
+  }
 
   runCheck(): void {
     const char = this.guild();
@@ -114,12 +137,61 @@ export class RaidRosterCheckComponent {
       next: ({ members }) => {
         this.results.set(members);
         this.loading.set(false);
+        this.checkedAt.set(new Date());
+        this._saveToCache(char.guild_id!);
       },
       error: () => this.loading.set(false),
     });
   }
 
+  formatDate(d: Date): string {
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+
   tooltip(r: CriterionResult): string {
     return r.failing.join(', ');
+  }
+
+  private _cacheKey(guildId: number, diff: Difficulty): string {
+    return `roster-check:${guildId}:${diff}`;
+  }
+
+  private _saveToCache(guildId: number): void {
+    const payload: CachedCheck = {
+      results: this.results(),
+      ranEnchantPolicy: this.ranEnchantPolicy(),
+      ranGemPolicy: this.ranGemPolicy(),
+      ranEmbellishPolicy: this.ranEmbellishPolicy(),
+      minIlvl: this.minIlvl(),
+      checkedAt: this.checkedAt()!.toISOString(),
+    };
+    localStorage.setItem(this._cacheKey(guildId, this.selectedDifficulty()), JSON.stringify(payload));
+  }
+
+  private _loadFromCache(guildId: number, diff: Difficulty): void {
+    const raw = localStorage.getItem(this._cacheKey(guildId, diff));
+    if (!raw) {
+      this.results.set([]);
+      this.hasRan.set(false);
+      this.checkedAt.set(null);
+      return;
+    }
+    try {
+      const data: CachedCheck = JSON.parse(raw);
+      this.results.set(data.results);
+      this.ranEnchantPolicy.set(data.ranEnchantPolicy);
+      this.ranGemPolicy.set(data.ranGemPolicy);
+      this.ranEmbellishPolicy.set(data.ranEmbellishPolicy);
+      this.minIlvl.set(data.minIlvl);
+      this.hasRan.set(true);
+      this.checkedAt.set(new Date(data.checkedAt));
+    } catch {
+      this.results.set([]);
+      this.hasRan.set(false);
+      this.checkedAt.set(null);
+    }
   }
 }

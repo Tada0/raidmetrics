@@ -42,7 +42,12 @@
       <p class="text-xs text-muted">Select a guild character first.</p>
     }
     @if (hasRan() && !loading() && results().length > 0) {
-      <p class="text-xs text-muted ml-auto">{{ passCount() }} / {{ results().length }} fully passing</p>
+      <div class="ml-auto text-right border border-border rounded-lg px-4 py-2">
+        <p class="text-base font-bold" [class]="passCount() === results().length ? 'text-green-400' : 'text-danger'">{{ passCount() }} / {{ results().length }} fully passing</p>
+        @if (checkedAt()) {
+          <p class="text-sm text-muted mt-0.5">as of {{ formatDate(checkedAt()!) }}</p>
+        }
+      </div>
     }
 
   </div>

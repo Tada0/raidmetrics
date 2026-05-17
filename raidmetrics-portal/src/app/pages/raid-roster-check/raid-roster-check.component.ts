@@ -44,20 +44,20 @@ export class RaidRosterCheckComponent {
 
   readonly enchantOptions: { value: EnchantPolicy; label: string; info?: string }[] = [
     { value: 'none', label: 'Not required' },
-    { value: 'any',  label: 'Any enchant on each slot' },
+    { value: 'any',  label: 'Any enchant on every enchantable item' },
     { value: 'top3', label: "Spec's meta enchants",
       info: "Every enchantable slot must have one of the most popular enchants for this character's spec, based on Archon.gg data." },
   ];
   readonly gemOptions: { value: GemPolicy; label: string; info?: string }[] = [
     { value: 'none',     label: 'Not required' },
-    { value: 'any',      label: 'Any gem in each socket' },
+    { value: 'any',      label: 'Any gem in each available socket' },
     { value: 'top_gems', label: "Spec's meta gems",
       info: "All sockets must be filled. At least one gem must be a top popular rare, and all remaining gems must be top popular epics for this spec, based on Archon.gg data." },
   ];
   readonly embellishOptions: { value: EmbellishPolicy; label: string; info?: string }[] = [
     { value: 'none', label: 'Not required' },
     { value: 'any',  label: 'Any 2 embellishments' },
-    { value: 'top3', label: "2× spec's meta embellishments",
+    { value: 'top3', label: "Spec's meta embellishments",
       info: "The character must have 2 embellishments, both from the most popular embellishments for their spec, based on Archon.gg data." },
   ];
 

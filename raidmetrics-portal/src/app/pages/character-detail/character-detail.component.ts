@@ -1,6 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { BisService } from '../../services/bis.service';
 import { CharacterSelectionService } from '../../services/character-selection.service';
 import { CharacterDetail, CharacterGearCheck, CharacterItem, GearStatus, WowService } from '../../services/wow.service';
@@ -37,6 +37,7 @@ export class CharacterDetailComponent {
   readonly selection = inject(CharacterSelectionService);
   private wow = inject(WowService);
   readonly bis = inject(BisService);
+  private router = inject(Router);
 
   readonly char = computed(() => this.selection.selected());
   readonly detail = signal<CharacterDetail | null>(null);
@@ -47,6 +48,13 @@ export class CharacterDetailComponent {
   readonly bisItemIds = computed(() =>
     new Set(this.bis.snapshot()?.wowhead_bis_items.map(i => i.item_id) ?? [])
   );
+
+  readonly bisSpec = computed(() => {
+    const d = this.detail();
+    const specs = this.bis.specs();
+    if (!d?.spec || !specs) return null;
+    return specs.find(s => s.spec_name === d.spec && s.class_name === d.class) ?? null;
+  });
 
   readonly slotLabels = SLOT_LABELS;
 
@@ -118,6 +126,14 @@ export class CharacterDetailComponent {
   private _slotItems(slots: string[]): (CharacterItem | null)[] {
     const map = this._itemMap();
     return slots.map(s => map.get(s) ?? null);
+  }
+
+  goToBis(): void {
+    const spec = this.bisSpec();
+    if (!spec) return;
+    this.bis.selectedClass.set(spec.class_slug);
+    this.bis.selectedSpec.set(spec.spec_slug);
+    this.router.navigate(['/dashboard/bis']);
   }
 
   qualityColor(quality: string): string {

@@ -46,6 +46,15 @@
             @if (d.guild) {
               <p class="text-muted text-xs mt-0.5">&lt;{{ d.guild }}&gt; · {{ d.realm }}</p>
             }
+            @if (bisSpec(); as spec) {
+              <button
+                (click)="goToBis()"
+                class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors"
+              >
+                <span>View BiS for {{ spec.spec_name }} {{ spec.class_name }}</span>
+                <span class="text-accent/70">→</span>
+              </button>
+            }
           </div>
 
           <!-- Gear columns + stats sidebar row -->

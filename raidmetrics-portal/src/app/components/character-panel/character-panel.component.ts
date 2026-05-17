@@ -1,5 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { BisService } from '../../services/bis.service';
 import { CharacterDetail, CharacterGearCheck, CharacterItem, GearStatus, WowService } from '../../services/wow.service';
 
@@ -36,6 +37,7 @@ export class CharacterPanelComponent {
 
   private wow = inject(WowService);
   readonly bis = inject(BisService);
+  private router = inject(Router);
 
   readonly detail = signal<CharacterDetail | null>(null);
   readonly gearCheck = signal<CharacterGearCheck | null>(null);
@@ -45,6 +47,13 @@ export class CharacterPanelComponent {
   readonly bisItemIds = computed(() =>
     new Set(this.bis.snapshot()?.wowhead_bis_items.map(i => i.item_id) ?? [])
   );
+
+  readonly bisSpec = computed(() => {
+    const d = this.detail();
+    const specs = this.bis.specs();
+    if (!d?.spec || !specs) return null;
+    return specs.find(s => s.spec_name === d.spec && s.class_name === d.class) ?? null;
+  });
 
   readonly leftItems  = computed(() => this._slotItems(LEFT_SLOTS));
   readonly rightItems = computed(() => this._slotItems(RIGHT_SLOTS));
@@ -106,6 +115,15 @@ export class CharacterPanelComponent {
   statusClass(status: GearStatus): string {
     return status === 'green'  ? 'text-green-400' :
            status === 'yellow' ? 'text-yellow-400' : 'text-danger';
+  }
+
+  goToBis(): void {
+    const spec = this.bisSpec();
+    if (!spec) return;
+    this.bis.selectedClass.set(spec.class_slug);
+    this.bis.selectedSpec.set(spec.spec_slug);
+    this.closed.emit();
+    this.router.navigate(['/dashboard/bis']);
   }
 
   qualityColor(quality: string): string { return QUALITY_COLORS[quality] ?? '#cdd5e0'; }

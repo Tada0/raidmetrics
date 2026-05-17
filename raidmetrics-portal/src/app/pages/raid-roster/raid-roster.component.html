@@ -191,7 +191,14 @@
                 @for (member of filteredAvailable(); track member.name + member.realm) {
                   <div class="flex items-center justify-between px-3 py-2 hover:bg-surface-raised transition-colors">
                     <div class="min-w-0 flex-1 mr-2">
-                      <p class="text-text text-sm font-medium truncate">{{ member.name }}</p>
+                      @if (canEdit()) {
+                        <button
+                          class="text-text text-sm font-medium truncate hover:text-accent hover:underline transition-colors text-left w-full"
+                          (click)="panelChar.set({ realm_slug: toRealmSlug(member.realm), name: member.name })"
+                        >{{ member.name }}</button>
+                      } @else {
+                        <p class="text-text text-sm font-medium truncate">{{ member.name }}</p>
+                      }
                       <p class="text-muted text-xs truncate">{{ member.realm }} · {{ member.class }}</p>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">

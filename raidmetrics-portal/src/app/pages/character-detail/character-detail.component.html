@@ -45,11 +45,21 @@
               @if (gc.enchants) {
                 <div class="bg-surface border border-border rounded-lg p-3">
                   <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Enchants</p>
-                  <div class="space-y-1">
+                  <div class="space-y-1.5">
                     @for (e of gc.enchants; track e.slot) {
-                      <div class="flex items-center gap-2 text-xs" [title]="e.reason ?? ''">
+                      <div class="relative group flex items-center gap-2 text-xs" [class.cursor-help]="e.reason">
                         <span class="font-bold shrink-0" [class]="statusClass(e.status)">{{ statusIcon(e.status) }}</span>
-                        <span class="text-muted truncate">{{ e.slot }}</span>
+                        <span
+                          class="truncate"
+                          [class]="e.reason
+                            ? 'underline decoration-dashed underline-offset-2 ' + statusClass(e.status)
+                            : 'text-muted'"
+                        >{{ e.slot }}</span>
+                        @if (e.reason) {
+                          <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
+                            {{ e.reason }}
+                          </div>
+                        }
                       </div>
                     }
                   </div>
@@ -62,11 +72,21 @@
                   @if (gc.gems.length === 0) {
                     <p class="text-xs text-muted">No sockets</p>
                   } @else {
-                    <div class="space-y-1">
+                    <div class="space-y-1.5">
                       @for (g of gc.gems; track g.slot) {
-                        <div class="flex items-center gap-2 text-xs" [title]="g.reason ?? ''">
+                        <div class="relative group flex items-center gap-2 text-xs" [class.cursor-help]="g.reason">
                           <span class="font-bold shrink-0" [class]="statusClass(g.status)">{{ statusIcon(g.status) }}</span>
-                          <span class="text-muted truncate">{{ g.slot }}</span>
+                          <span
+                            class="truncate"
+                            [class]="g.reason
+                              ? 'underline decoration-dashed underline-offset-2 ' + statusClass(g.status)
+                              : 'text-muted'"
+                          >{{ g.slot }}</span>
+                          @if (g.reason) {
+                            <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
+                              {{ g.reason }}
+                            </div>
+                          }
                         </div>
                       }
                     </div>
@@ -77,15 +97,27 @@
               @if (gc.embellishments) {
                 <div class="bg-surface border border-border rounded-lg p-3">
                   <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Embellishments</p>
-                  <div class="flex items-start gap-2 text-xs" [title]="gc.embellishments.reason ?? ''">
+                  <div class="relative group flex items-start gap-2 text-xs" [class.cursor-help]="gc.embellishments.reason">
                     <span class="font-bold shrink-0 mt-px" [class]="statusClass(gc.embellishments.status)">{{ statusIcon(gc.embellishments.status) }}</span>
-                    <span class="text-muted leading-snug">
+                    <span
+                      class="leading-snug"
+                      [class]="gc.embellishments.reason
+                        ? 'underline decoration-dashed underline-offset-2 ' + statusClass(gc.embellishments.status)
+                        : 'text-muted'"
+                    >
                       @if (gc.embellishments.names.length > 0) {
                         {{ gc.embellishments.names.join(' / ') }}
+                      } @else if (gc.embellishments.count === 1) {
+                        Only 1/2 equipped
                       } @else {
-                        {{ gc.embellishments.count }}/2 equipped
+                        None equipped
                       }
                     </span>
+                    @if (gc.embellishments.reason) {
+                      <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
+                        {{ gc.embellishments.reason }}
+                      </div>
+                    }
                   </div>
                 </div>
               }

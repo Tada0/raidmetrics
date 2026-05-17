@@ -638,9 +638,9 @@ def _detail_embellishments(items: list, popular_items: list) -> dict:
     count = len(emb_items)
 
     if count == 0:
-        return {"status": "red", "reason": "No embellishments equipped", "count": 0}
+        return {"status": "red", "reason": "No embellishments equipped", "count": 0, "names": []}
     if count == 1:
-        return {"status": "red", "reason": "Only 1/2 embellishments equipped", "count": 1}
+        return {"status": "red", "reason": "Only 1/2 embellishments equipped", "count": 1, "names": []}
 
     top3_name_combos: list[frozenset[str]] = []
     top3_id_combos: list[frozenset[int]] = []
@@ -667,7 +667,7 @@ def _detail_embellishments(items: list, popular_items: list) -> dict:
 
     status = "green" if (name_match or id_match) else "yellow"
     reason = None if status == "green" else "Combo not in top-3 for this spec"
-    names  = [n for item in emb_items for n in item.get("spell_names", [])]
+    names  = [n.title() for item in emb_items for n in item.get("spell_names", [])]
     return {"status": status, "reason": reason, "count": count, "names": names}
 
 

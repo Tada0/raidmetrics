@@ -34,7 +34,7 @@ async def _run_and_clear():
         _current_task = None
 
 
-def _start_scrape() -> bool:
+async def _start_scrape() -> bool:
     global _running, _current_task
     if _running:
         return False
@@ -48,13 +48,13 @@ async def lifespan(app: FastAPI):
     scheduler = AsyncIOScheduler()
     schedule = os.getenv("SCRAPE_SCHEDULE")
     if schedule:
-        scheduler.add_job(_start_scrape, CronTrigger.from_crontab(schedule))
+        scheduler.add_job(_start_scrape, CronTrigger.from_crontab(schedule), misfire_grace_time=300)
         logger.info("Scrape scheduled: %s", schedule)
     else:
         logger.info("No SCRAPE_SCHEDULE set — manual trigger only")
     scheduler.start()
     logger.info("Running startup scrape")
-    _start_scrape()
+    await _start_scrape()
     yield
     scheduler.shutdown()
 
@@ -64,7 +64,7 @@ app = FastAPI(title="Raidmetrics Scraper", lifespan=lifespan)
 
 @app.post("/trigger")
 async def trigger():
-    started = _start_scrape()
+    started = await _start_scrape()
     if not started:
         raise HTTPException(status_code=409, detail="scrape_already_running")
     return {"started": True}

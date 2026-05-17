@@ -1,3 +1,5 @@
+<app-character-panel [character]="panelChar()" (closed)="panelChar.set(null)" />
+
 <div class="p-8 h-full flex flex-col">
 
   @if (!char()) {
@@ -117,7 +119,16 @@
                           <span class="text-muted text-xs">—</span>
                         }
                       </td>
-                      <td class="px-4 py-2.5 text-text font-medium">{{ member.character_name }}</td>
+                      <td class="px-4 py-2.5">
+                        @if (canEdit()) {
+                          <button
+                            class="font-medium text-text hover:text-accent hover:underline transition-colors text-left"
+                            (click)="panelChar.set({ realm_slug: toRealmSlug(member.character_realm), name: member.character_name })"
+                          >{{ member.character_name }}</button>
+                        } @else {
+                          <span class="font-medium text-text">{{ member.character_name }}</span>
+                        }
+                      </td>
                       <td class="px-4 py-2.5 text-muted">{{ member.character_realm }}</td>
                       <td class="px-4 py-2.5 text-muted">{{ member.character_class ?? '—' }}</td>
                       @if (canEdit()) {

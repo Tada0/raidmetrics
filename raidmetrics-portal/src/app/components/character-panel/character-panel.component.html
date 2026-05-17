@@ -1,0 +1,330 @@
+<!-- Backdrop -->
+@if (character()) {
+  <div
+    class="fixed inset-0 bg-black/60 z-40"
+    (click)="closed.emit()"
+  ></div>
+}
+
+<!-- Slide-in panel (always in DOM so exit transition plays) -->
+<div
+  class="fixed top-0 right-0 h-full w-[95vw] bg-surface border-l border-border z-50 shadow-2xl transition-transform duration-300 ease-in-out overflow-y-auto overflow-x-auto"
+  [class.translate-x-full]="!character()"
+>
+
+  <!-- Close button -->
+  <button
+    (click)="closed.emit()"
+    class="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-lg bg-surface-raised border border-border text-muted hover:text-text hover:border-muted transition-colors text-lg leading-none"
+    title="Close"
+  >✕</button>
+
+  <!-- Content -->
+  <div class="p-8">
+
+    @if (loading()) {
+      <div class="flex flex-col items-center justify-center py-24 gap-4">
+        <svg class="w-10 h-10 text-accent animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <p class="text-muted text-sm">Loading character…</p>
+      </div>
+    } @else if (error()) {
+      <p class="text-danger text-sm">{{ error() }}</p>
+    } @else if (detail(); as d) {
+
+      <!-- Page centering wrapper -->
+      <div class="flex justify-center">
+        <div class="flex flex-col">
+
+          <div class="text-center mb-8 pl-56 pr-52">
+            <h1 class="text-2xl font-bold text-text">{{ d.name }}</h1>
+            <p class="text-muted text-sm mt-1">
+              {{ d.spec ? d.spec + ' ' : '' }}{{ d.class }} · {{ d.race }} · Level {{ d.level }}
+            </p>
+            @if (d.guild) {
+              <p class="text-muted text-xs mt-0.5">&lt;{{ d.guild }}&gt; · {{ d.realm }}</p>
+            }
+          </div>
+
+          <!-- Gear columns + stats sidebar row -->
+          <div class="flex gap-8 items-start">
+
+            <!-- Gear check summary -->
+            @if (gearCheck(); as gc) {
+              <div class="flex flex-col gap-3 shrink-0 w-48">
+
+                @if (gc.enchants) {
+                  <div class="bg-surface border border-border rounded-lg p-3">
+                    <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Enchants</p>
+                    <div class="space-y-1.5">
+                      @for (e of gc.enchants; track e.slot) {
+                        <div class="relative group flex items-center gap-2 text-sm" [class.cursor-help]="e.reason">
+                          <span class="font-bold shrink-0" [class]="statusClass(e.status)">{{ statusIcon(e.status) }}</span>
+                          <span
+                            class="truncate flex-1"
+                            [class]="e.reason
+                              ? 'underline decoration-dashed underline-offset-2 ' + statusClass(e.status)
+                              : 'text-muted'"
+                          >{{ e.slot }}</span>
+                          @if (e.rank) {
+                            <span class="text-xs text-muted shrink-0">#{{ e.rank }}</span>
+                          }
+                          @if (e.reason) {
+                            <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
+                              {{ e.reason }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (gc.gems) {
+                  <div class="bg-surface border border-border rounded-lg p-3">
+                    <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Gems</p>
+                    @if (gc.gems.length === 0) {
+                      <p class="text-xs text-muted">No sockets</p>
+                    } @else {
+                      <div class="space-y-1.5">
+                        @for (g of gc.gems; track g.slot) {
+                          <div class="relative group flex items-center gap-2 text-sm" [class.cursor-help]="g.reason">
+                            <span class="font-bold shrink-0" [class]="statusClass(g.status)">{{ statusIcon(g.status) }}</span>
+                            <span
+                              class="truncate flex-1"
+                              [class]="g.reason
+                                ? 'underline decoration-dashed underline-offset-2 ' + statusClass(g.status)
+                                : 'text-muted'"
+                            >{{ g.slot }}</span>
+                            @if (g.rank) {
+                              <span class="text-xs text-muted shrink-0">#{{ g.rank }}</span>
+                            }
+                            @if (g.reason) {
+                              <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
+                                {{ g.reason }}
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+
+                @if (gc.embellishments) {
+                  <div class="bg-surface border border-border rounded-lg p-3">
+                    <p class="text-xs font-medium text-muted uppercase tracking-wider mb-2">Embellishments</p>
+                    <div class="relative group flex items-start gap-2 text-sm" [class.cursor-help]="gc.embellishments.reason">
+                      <span class="font-bold shrink-0 mt-px" [class]="statusClass(gc.embellishments.status)">{{ statusIcon(gc.embellishments.status) }}</span>
+                      <span
+                        class="leading-snug flex-1"
+                        [class]="gc.embellishments.reason
+                          ? 'underline decoration-dashed underline-offset-2 ' + statusClass(gc.embellishments.status)
+                          : 'text-muted'"
+                      >
+                        @if (gc.embellishments.names.length > 0) {
+                          {{ gc.embellishments.names.join(' / ') }}
+                        } @else if (gc.embellishments.count === 1) {
+                          Only 1/2 equipped
+                        } @else {
+                          None equipped
+                        }
+                      </span>
+                      @if (gc.embellishments.rank) {
+                        <span class="text-xs text-muted shrink-0 mt-px">#{{ gc.embellishments.rank }}</span>
+                      }
+                      @if (gc.embellishments.reason) {
+                        <div class="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block w-44 bg-surface-raised border border-border rounded-lg px-2.5 py-2 text-xs text-text shadow-lg leading-snug">
+                          {{ gc.embellishments.reason }}
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+              </div>
+            }
+
+            <!-- Armory: 3 gear columns -->
+            <div class="flex gap-6 items-start">
+
+              <!-- Left items -->
+              <div class="flex flex-col gap-2 w-44 shrink-0">
+                @for (item of leftItems(); track $index) {
+                  @if (item) {
+                    <a
+                      [href]="wowheadHref(item)"
+                      [attr.data-wowhead]="wowheadData(item)"
+                      target="_blank"
+                      rel="noopener"
+                      class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
+                    >
+                      <div class="flex flex-col items-end text-right flex-1 min-w-0">
+                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
+                          @if (bisItemIds().has(item.item_id)) {
+                            <span class="text-[10px] px-1 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
+                          }
+                          <span class="text-muted text-sm leading-none">{{ slotLabel(item.slot_type) }}</span>
+                        </div>
+                        <span class="text-base font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                        <span class="text-muted text-sm leading-none mt-0.5">{{ item.item_level }}</span>
+                      </div>
+                      @if (item.icon_url) {
+                        <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+                      } @else {
+                        <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+                      }
+                    </a>
+                  } @else {
+                    <div class="px-2 py-1.5 flex justify-end items-center gap-2 opacity-20">
+                      <span class="text-muted text-xs">Empty</span>
+                      <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
+                    </div>
+                  }
+                }
+              </div>
+
+              <!-- Center: character image + ilvl -->
+              <div class="flex flex-col items-center gap-4 w-[600px] shrink-0">
+                @if (d.main_raw_url) {
+                  <img [src]="d.main_raw_url" [alt]="d.name" loading="eager" class="w-full h-auto" />
+                } @else {
+                  <div class="w-full aspect-[2/3] flex items-center justify-center rounded-xl bg-surface border border-border">
+                    <span class="text-muted text-sm">No image</span>
+                  </div>
+                }
+                <div class="text-center">
+                  <p class="text-xs text-muted uppercase tracking-wider">Equipped iLvl</p>
+                  <p class="text-2xl font-bold text-accent">{{ d.equipped_item_level }}</p>
+                </div>
+              </div>
+
+              <!-- Right items -->
+              <div class="flex flex-col gap-2 w-44 shrink-0">
+                @for (item of rightItems(); track $index) {
+                  @if (item) {
+                    <a
+                      [href]="wowheadHref(item)"
+                      [attr.data-wowhead]="wowheadData(item)"
+                      target="_blank"
+                      rel="noopener"
+                      class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors"
+                    >
+                      @if (item.icon_url) {
+                        <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+                      } @else {
+                        <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+                      }
+                      <div class="flex flex-col items-start text-left flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                          <span class="text-muted text-sm leading-none">{{ slotLabel(item.slot_type) }}</span>
+                          @if (bisItemIds().has(item.item_id)) {
+                            <span class="text-[10px] px-1 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
+                          }
+                        </div>
+                        <span class="text-base font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                        <span class="text-muted text-sm leading-none mt-0.5">{{ item.item_level }}</span>
+                      </div>
+                    </a>
+                  } @else {
+                    <div class="px-2 py-1.5 flex justify-start items-center gap-2 opacity-20">
+                      <div class="w-9 h-9 rounded bg-surface-raised border border-border"></div>
+                      <span class="text-muted text-xs">Empty</span>
+                    </div>
+                  }
+                }
+              </div>
+
+            </div>
+
+            <!-- Stats sidebar -->
+            @if (d.stats; as s) {
+              <div class="flex flex-col gap-1.5 w-44 shrink-0">
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">Health</p>
+                  <p class="text-text font-semibold">{{ s.health | number:'1.0-0' }}</p>
+                </div>
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">Stamina</p>
+                  <p class="text-text font-semibold">{{ s.stamina | number:'1.0-0' }}</p>
+                </div>
+                @if (primaryStat(); as ps) {
+                  <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                    <p class="text-muted text-xs uppercase tracking-wider">{{ ps.name }}</p>
+                    <p class="text-text font-semibold">{{ ps.value | number:'1.0-0' }}</p>
+                  </div>
+                }
+                <div class="border-t border-border my-1"></div>
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">Critical Strike</p>
+                  <p class="text-accent font-semibold">{{ s.crit_percent | number:'1.2-2' }}%</p>
+                  @if (s.crit_rating) {
+                    <p class="text-muted text-xs">{{ s.crit_rating | number:'1.0-0' }} rating</p>
+                  }
+                </div>
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">Haste</p>
+                  <p class="text-accent font-semibold">{{ s.haste_percent | number:'1.2-2' }}%</p>
+                  @if (s.haste_rating) {
+                    <p class="text-muted text-xs">{{ s.haste_rating | number:'1.0-0' }} rating</p>
+                  }
+                </div>
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">Mastery</p>
+                  <p class="text-accent font-semibold">{{ s.mastery_percent | number:'1.2-2' }}%</p>
+                  @if (s.mastery_rating) {
+                    <p class="text-muted text-xs">{{ s.mastery_rating | number:'1.0-0' }} rating</p>
+                  }
+                </div>
+                <div class="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p class="text-muted text-xs uppercase tracking-wider">Versatility</p>
+                  <p class="text-accent font-semibold">{{ s.versatility_percent | number:'1.2-2' }}%</p>
+                  @if (s.versatility_rating) {
+                    <p class="text-muted text-xs">{{ s.versatility_rating | number:'1.0-0' }} rating</p>
+                  }
+                </div>
+              </div>
+            }
+
+          </div>
+
+          <!-- Weapon slots -->
+          @if (weaponItems().length > 0) {
+            <div class="flex justify-center gap-4 mt-4 pl-56 pr-52">
+              @for (item of weaponItems(); track item.slot_type) {
+                <a
+                  [href]="wowheadHref(item)"
+                  [attr.data-wowhead]="wowheadData(item)"
+                  target="_blank"
+                  rel="noopener"
+                  class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-surface border border-border hover:border-muted transition-colors min-w-40"
+                >
+                  @if (item.icon_url) {
+                    <img [src]="item.icon_url" class="w-9 h-9 rounded shrink-0" [alt]="item.name" />
+                  } @else {
+                    <div class="w-9 h-9 rounded shrink-0 bg-surface-raised border border-border"></div>
+                  }
+                  <div class="flex flex-col items-start text-left flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                      <span class="text-muted text-sm leading-none">{{ slotLabel(item.slot_type) }}</span>
+                      @if (bisItemIds().has(item.item_id)) {
+                        <span class="text-[10px] px-1 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
+                      }
+                    </div>
+                    <span class="text-base font-medium leading-snug truncate max-w-full" [style.color]="qualityColor(item.quality)">{{ item.name }}</span>
+                    <span class="text-muted text-sm leading-none mt-0.5">{{ item.item_level }}</span>
+                  </div>
+                </a>
+              }
+            </div>
+          }
+
+        </div>
+      </div>
+
+    }
+
+  </div>
+</div>

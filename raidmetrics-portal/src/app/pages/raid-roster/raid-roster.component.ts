@@ -5,6 +5,7 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { CharacterSelectionService } from '../../services/character-selection.service';
 import { Difficulty, RaidRosterService, Role, RosterMember } from '../../services/raid-roster.service';
 import { GuildMember, WowService } from '../../services/wow.service';
+import { CharacterPanelComponent, PanelCharacter } from '../../components/character-panel/character-panel.component';
 
 interface RostersState {
   normal: RosterMember[];
@@ -26,7 +27,7 @@ const ROSTER_LIMITS: Record<Difficulty, number> = {
 
 @Component({
   selector: 'app-raid-roster',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, CharacterPanelComponent],
   templateUrl: './raid-roster.component.html',
 })
 export class RaidRosterComponent {
@@ -45,13 +46,14 @@ export class RaidRosterComponent {
   readonly difficultyLabels = DIFFICULTY_LABELS;
   readonly rosterLimits = ROSTER_LIMITS;
 
-  readonly activeTab = signal<Difficulty>('normal');
+  readonly activeTab = signal<Difficulty>('mythic');
   readonly rostersLoading = signal(true);
   readonly guildMembersLoading = signal(false);
   readonly saving = signal<Difficulty | null>(null);
   readonly saveError = signal<string | null>(null);
   readonly saveSuccess = signal<Difficulty | null>(null);
   readonly refreshingRoster = signal(false);
+  readonly panelChar = signal<PanelCharacter | null>(null);
 
   readonly rosters = signal<RostersState>({ normal: [], heroic: [], mythic: [] });
   readonly guildMembers = signal<GuildMember[]>([]);
@@ -141,6 +143,10 @@ export class RaidRosterComponent {
     'Warlock':      ['dps'],
     'Warrior':      ['tank', 'dps'],
   };
+
+  toRealmSlug(realm: string): string {
+    return realm.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-');
+  }
 
   availableRoles(member: GuildMember): Role[] {
     return this.classRoles[member.class] ?? this.roles;

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TitleCasePipe } from '@angular/common';
 import { CharacterSelectionService } from '../../services/character-selection.service';
+import { CharacterPanelComponent, PanelCharacter } from '../../components/character-panel/character-panel.component';
 
 type EnchantPolicy = 'none' | 'any' | 'top3';
 type GemPolicy = 'none' | 'any' | 'top_gems';
@@ -39,7 +40,7 @@ interface CachedCheck {
 
 @Component({
   selector: 'app-raid-roster-check',
-  imports: [FormsModule, TitleCasePipe],
+  imports: [FormsModule, TitleCasePipe, CharacterPanelComponent],
   templateUrl: './raid-roster-check.component.html',
 })
 export class RaidRosterCheckComponent {
@@ -80,6 +81,7 @@ export class RaidRosterCheckComponent {
   readonly hasRan = signal(false);
   readonly results = signal<MemberResult[]>([]);
   readonly checkedAt = signal<Date | null>(null);
+  readonly panelChar = signal<PanelCharacter | null>(null);
 
   // Policies captured at run time — drive table columns so they don't shift on live changes
   readonly ranEnchantPolicy = signal<EnchantPolicy>('none');
@@ -153,6 +155,10 @@ export class RaidRosterCheckComponent {
 
   tooltip(r: CriterionResult): string {
     return r.failing.join(', ');
+  }
+
+  toRealmSlug(realm: string): string {
+    return realm.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-');
   }
 
   private _cacheKey(guildId: number, diff: Difficulty): string {

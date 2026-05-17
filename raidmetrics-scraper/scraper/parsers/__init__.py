@@ -12,6 +12,7 @@ class PopularItem:
     usage_percent: float | None
     is_crafted: bool = False
     is_embellishment: bool = False
+    item_id2: int | None = None
 
 
 @dataclass

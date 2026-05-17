@@ -62,6 +62,7 @@ class ArchonPopularItem(Base):
     slot = Column(String, nullable=False)
     rank = Column(Integer, nullable=False)
     item_id = Column(Integer, nullable=False)
+    item_id2 = Column(Integer, nullable=True)
     item_name = Column(String, nullable=False)
     usage_percent = Column(Float, nullable=True)
     is_crafted = Column(Boolean, nullable=False, default=False)

@@ -12,6 +12,7 @@ export interface PopularItem {
   slot: string;
   rank: number;
   item_id: number;
+  item_id2: number | null;
   item_name: string;
   usage_percent: number | null;
   is_crafted: boolean;
@@ -82,6 +83,7 @@ export class BisService {
         this.loading.set(false);
         const ids = [...new Set([
           ...s.popular_items.map(i => i.item_id),
+          ...s.popular_items.filter(i => i.item_id2).map(i => i.item_id2!),
           ...s.popular_gems.map(g => g.item_id),
           ...s.wowhead_bis_items.map(i => i.item_id),
         ])];

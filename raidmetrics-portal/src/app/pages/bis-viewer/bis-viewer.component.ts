@@ -275,6 +275,15 @@ export class BisViewerComponent {
     return this.bis.icons().get(itemId) ?? null;
   }
 
+  embellishmentParts(item: PopularItem): { id: number; name: string }[] {
+    const names = item.item_name.split(' / ');
+    const parts: { id: number; name: string }[] = [{ id: item.item_id, name: names[0] ?? item.item_name }];
+    if (item.item_id2 && names[1]) {
+      parts.push({ id: item.item_id2, name: names[1] });
+    }
+    return parts;
+  }
+
   private _slotRank(slot: string): number {
     const idx = this.SLOT_ORDER.indexOf(slot.toLowerCase());
     return idx === -1 ? 999 : idx;

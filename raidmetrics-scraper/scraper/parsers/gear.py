@@ -35,14 +35,14 @@ def _item_from_row(row: dict, slot: str, is_crafted: bool, is_embellishment: boo
     item_jsx = row.get("item", "")
     # Embellishments can have two ItemIcon tags — take the first non-blank one
     if is_embellishment:
-        # Archon.gg shows two icons: the embellishment effect (ItemIcon) and the
-        # wearable crafted piece (GearIcon). Blizzard's API returns the GearIcon's
-        # item_id for equipped items, so prefer that over any ItemIcon id.
-        gear_ids = re.findall(r'<GearIcon\b[^>]*?id=\{(\d+)\}', item_jsx)
+        # Archon.gg shows embellishment combinations: each row is two embellishments
+        # shown together (e.g. "Arcanoweave Lining / Sunset Bloom Embroidery").
+        # Use the first GearIcon id as the primary item_id; join all names as the combo.
         all_ids = re.findall(r'id=\{(\d+)\}', item_jsx)
-        item_id = int(gear_ids[0]) if gear_ids else (int(all_ids[0]) if all_ids else None)
+        item_id = int(all_ids[0]) if all_ids else None
+        item_id2 = int(all_ids[1]) if len(all_ids) >= 2 else None
         names = re.findall(r'>([^<>&][^<>]*)</(Item|Gear)Icon>', item_jsx)
-        item_name = names[0][0].strip() if names else ""
+        item_name = " / ".join(n[0].strip() for n in names) if names else ""
     else:
         item_id = extract_id(item_jsx)
         item_name = extract_name(item_jsx)
@@ -51,7 +51,7 @@ def _item_from_row(row: dict, slot: str, is_crafted: bool, is_embellishment: boo
         return None
 
     usage = extract_usage(row.get("popularity", ""))
-    return PopularItem(
+    kwargs = dict(
         slot=slot,
         rank=rank,
         item_id=item_id,
@@ -60,6 +60,9 @@ def _item_from_row(row: dict, slot: str, is_crafted: bool, is_embellishment: boo
         is_crafted=is_crafted,
         is_embellishment=is_embellishment,
     )
+    if is_embellishment:
+        kwargs["item_id2"] = item_id2
+    return PopularItem(**kwargs)
 
 
 def _parse_slot_tables(page_data: dict) -> list[PopularItem]:
@@ -96,13 +99,13 @@ def _parse_embellishments(page_data: dict) -> list[PopularItem]:
     if not props:
         return []
 
-    seen: set[int] = set()
+    seen: set[str] = set()
     items: list[PopularItem] = []
     rank = 1
     for row in _rows_from_table(props.get("table", {})):
         item = _item_from_row(row, slot="", is_crafted=True, is_embellishment=True, rank=rank)
-        if item and item.item_id not in seen:
-            seen.add(item.item_id)
+        if item and item.item_name not in seen:
+            seen.add(item.item_name)
             items.append(item)
             rank += 1
     return items

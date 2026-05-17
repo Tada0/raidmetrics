@@ -47,6 +47,7 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
             slot=item.slot,
             rank=item.rank,
             item_id=item.item_id,
+            item_id2=item.item_id2,
             item_name=item.item_name,
             usage_percent=item.usage_percent,
             is_crafted=item.is_crafted,

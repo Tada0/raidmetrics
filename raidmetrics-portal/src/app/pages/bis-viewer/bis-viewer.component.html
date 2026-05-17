@@ -356,21 +356,26 @@
               @for (item of embellishments(); track item.rank) {
                 <div class="px-4 py-2.5 flex items-start gap-3">
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                      @if (iconUrl(item.item_id); as url) {
-                        <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
-                      } @else {
-                        <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      @for (part of embellishmentParts(item); track part.id; let last = $last) {
+                        @if (iconUrl(part.id); as url) {
+                          <img [src]="url" class="w-6 h-6 rounded object-cover shrink-0" alt="">
+                        } @else {
+                          <div class="w-6 h-6 rounded bg-surface-raised shrink-0"></div>
+                        }
+                        @if (bisItemIds().has(part.id)) {
+                          <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
+                        }
+                        <a
+                          [href]="wowheadItem(part.id)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-sm text-text hover:text-accent transition-colors"
+                        >{{ part.name }}</a>
+                        @if (!last) {
+                          <span class="text-muted">/</span>
+                        }
                       }
-                      @if (bisItemIds().has(item.item_id)) {
-                        <span class="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold leading-none shrink-0">BiS</span>
-                      }
-                      <a
-                        [href]="wowheadItem(item.item_id)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-sm text-text hover:text-accent transition-colors"
-                      >{{ item.item_name }}</a>
                     </div>
                     @if (item.usage_percent != null) {
                       <div class="mt-1.5 flex items-center gap-2">

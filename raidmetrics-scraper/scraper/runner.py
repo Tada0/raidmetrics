@@ -13,7 +13,7 @@ from .parsers.enchants import parse_enchants_gems
 from .parsers.gear import parse_gear
 from .parsers.wowhead_bis import fetch_wowhead_bis
 from .models import WowItemIcon
-from .storage import create_run, finish_run, prune_old_runs, save_boss_loot, save_spec, update_season_config
+from .storage import create_run, finish_run, prune_old_loot_reports, prune_old_runs, save_boss_loot, save_spec, update_season_config
 
 _BLIZZARD_CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", "")
 _BLIZZARD_CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", "")
@@ -352,6 +352,7 @@ async def run_scrape(specs: list[tuple[str, str]] | None = None, dry_run: bool =
         if db and run:
             finish_run(db, run, success=(failed == 0))
             prune_old_runs(db)
+            prune_old_loot_reports(db)
 
         logger.info(
             "Scrape complete — %d/%d specs OK%s",

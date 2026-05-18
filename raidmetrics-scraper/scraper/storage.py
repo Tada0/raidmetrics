@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .models import (
@@ -119,6 +120,27 @@ def save_boss_loot(db: Session, loot: list[dict]) -> None:
         ))
     db.commit()
     logger.info("Saved %d boss loot items", len(loot))
+
+
+def prune_old_loot_reports(db: Session, max_age_hours: int = 12) -> None:
+    """Delete loot reports (and their items) older than max_age_hours."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+    db.execute(
+        text("""
+            DELETE FROM loot_report_items
+            WHERE report_id IN (
+                SELECT id FROM loot_reports WHERE updated_at < :cutoff
+            )
+        """),
+        {"cutoff": cutoff},
+    )
+    result = db.execute(
+        text("DELETE FROM loot_reports WHERE updated_at < :cutoff"),
+        {"cutoff": cutoff},
+    )
+    db.commit()
+    if result.rowcount:
+        logger.info("Pruned %d expired loot reports (older than %dh)", result.rowcount, max_age_hours)
 
 
 def prune_old_runs(db: Session):

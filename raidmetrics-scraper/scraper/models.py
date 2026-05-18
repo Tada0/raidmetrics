@@ -4,9 +4,21 @@ from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
+
+
+class SeasonConfig(Base):
+    __tablename__ = "season_config"
+    id = Column(Integer, primary_key=True, index=True)
+    season_name = Column(String, nullable=False)
+    zone_ids = Column(JSONB, nullable=False)
+    mythic_ilvl_cap = Column(Integer, nullable=False)
+    heroic_ilvl_cap = Column(Integer, nullable=False)
+    normal_ilvl_cap = Column(Integer, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class ArchonScrapeRun(Base):

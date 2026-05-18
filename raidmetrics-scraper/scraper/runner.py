@@ -11,7 +11,7 @@ from .parsers import ScrapedSpec
 from .parsers.enchants import parse_enchants_gems
 from .parsers.gear import parse_gear
 from .parsers.wowhead_bis import fetch_wowhead_bis
-from .storage import create_run, finish_run, prune_old_runs, save_spec
+from .storage import create_run, finish_run, prune_old_runs, save_spec, update_season_config
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,48 @@ async def _scrape_spec(
         )
 
 
+_INSTANCES_URL = "https://www.raidbots.com/static/data/live/instances.json"
+
+# ilvl caps per difficulty for the current tier — update each new season
+_ILVL_CAPS = {"mythic": 289, "heroic": 276, "normal": 263}
+
+
+async def _scrape_season_config(client: httpx.AsyncClient, db) -> None:
+    """Fetch instances.json and upsert SeasonConfig with current tier zone IDs."""
+    resp = await client.get(_INSTANCES_URL)
+    resp.raise_for_status()
+    instances = resp.json()
+
+    # Current season = raid aggregate (negative id) with the lowest order value
+    raid_aggregates = [
+        i for i in instances
+        if i.get("id", 0) < 0 and i.get("type") == "raid" and "order" in i
+    ]
+    if not raid_aggregates:
+        logger.warning("No raid aggregates found in instances.json")
+        return
+
+    current = min(raid_aggregates, key=lambda i: i["order"])
+    season_name = current["name"]
+
+    # Collect zone IDs from encounter entries (each encounter has a zone_id or
+    # we derive them from the individual raid instances that share encounters)
+    encounter_ids = {e["id"] for e in current.get("encounters", [])}
+    zone_ids = sorted({
+        i["id"] for i in instances
+        if i.get("id", 0) > 0
+        and i.get("type") == "raid"
+        and any(e["id"] in encounter_ids for e in i.get("encounters", []))
+    })
+
+    if not zone_ids:
+        logger.warning("Could not derive zone IDs for %s", season_name)
+        return
+
+    update_season_config(db, season_name, zone_ids, _ILVL_CAPS)
+    logger.info("Season config updated: %s zones=%s", season_name, zone_ids)
+
+
 async def run_scrape(specs: list[tuple[str, str]] | None = None, dry_run: bool = False) -> bool:
     """Run a full scrape. Returns True if all specs succeeded."""
     if specs is None:
@@ -76,6 +118,12 @@ async def run_scrape(specs: list[tuple[str, str]] | None = None, dry_run: bool =
                 follow_redirects=True,
             ) as wowhead,
         ):
+            if db:
+                try:
+                    await _scrape_season_config(wowhead, db)
+                except Exception as exc:
+                    logger.error("Season config scrape failed: %s", exc)
+
             tasks = [
                 asyncio.create_task(_scrape_spec(archon, wowhead, spec, cls, sem, wowhead_sem))
                 for spec, cls in specs

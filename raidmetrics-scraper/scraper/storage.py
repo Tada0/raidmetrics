@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .models import (
     ArchonPopularEnchant, ArchonPopularGem,
-    ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot, WowheadBisItem,
+    ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot, SeasonConfig, WowheadBisItem,
 )
 from .parsers import ScrapedSpec
 
@@ -86,6 +86,21 @@ def save_spec(db: Session, run: ArchonScrapeRun, spec: ScrapedSpec) -> ArchonSpe
     run.specs_scraped += 1
     db.commit()
     return snapshot
+
+
+def update_season_config(db: Session, season_name: str, zone_ids: list[int], ilvl_caps: dict) -> None:
+    """Upsert the single SeasonConfig row."""
+    config = db.query(SeasonConfig).first()
+    if config is None:
+        config = SeasonConfig()
+        db.add(config)
+    config.season_name = season_name
+    config.zone_ids = zone_ids
+    config.mythic_ilvl_cap = ilvl_caps["mythic"]
+    config.heroic_ilvl_cap = ilvl_caps["heroic"]
+    config.normal_ilvl_cap = ilvl_caps["normal"]
+    config.updated_at = datetime.now(timezone.utc)
+    db.commit()
 
 
 def prune_old_runs(db: Session):

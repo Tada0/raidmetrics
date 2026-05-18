@@ -12,6 +12,7 @@ from .v1.routers import bis as bis_v1
 from .v1.routers import raid_roster as raid_roster_v1
 from .v1.routers import scraper as scraper_v1
 from .v1.routers import session as session_v1
+from .v1.routers import loot as loot_v1
 from .v1.routers import wow as wow_v1
 
 FRONTEND_SECRET = os.getenv("FRONTEND_SECRET")
@@ -74,6 +75,7 @@ v1_auth_router.include_router(session_v1.router, prefix="/session")
 
 v1_router.include_router(v1_auth_router)
 v1_router.include_router(wow_v1.router, prefix="/wow")
+v1_router.include_router(loot_v1.router, prefix="/wow")
 v1_router.include_router(raid_roster_v1.router, prefix="/raid-roster")
 v1_router.include_router(scraper_v1.router, prefix="/scraper")
 v1_router.include_router(bis_v1.router, prefix="/bis")

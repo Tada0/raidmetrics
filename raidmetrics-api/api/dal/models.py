@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import (BigInteger, Boolean, Column, DateTime, ForeignKey,
-                        Integer, String, UniqueConstraint)
+from sqlalchemy import (BigInteger, Boolean, Column, DateTime, Float,
+                        ForeignKey, Integer, String, UniqueConstraint)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -88,3 +89,55 @@ class RaidRosterMember(Base):
     sort_order = Column(Integer, default=0)
 
     roster = relationship("RaidRoster", back_populates="members")
+
+
+class SeasonConfig(Base):
+    __tablename__ = "season_config"
+    id = Column(Integer, primary_key=True, index=True)
+    season_name = Column(String, nullable=False)       # e.g. "Season 1 Raids"
+    zone_ids = Column(JSONB, nullable=False)            # [1307, 1308, 1314]
+    mythic_ilvl_cap = Column(Integer, nullable=False)  # 289
+    heroic_ilvl_cap = Column(Integer, nullable=False)  # 276
+    normal_ilvl_cap = Column(Integer, nullable=False)  # 263
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class LootReport(Base):
+    __tablename__ = "loot_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    guild_id = Column(BigInteger, nullable=False, index=True)
+    character_name = Column(String, nullable=False)
+    realm_slug = Column(String, nullable=False)
+    difficulty = Column(String, nullable=False)         # 'normal', 'heroic', 'mythic'
+    raidbots_report_id = Column(String, nullable=False)
+    baseline_dps = Column(Float, nullable=False)
+    equipped_items = Column(JSONB, nullable=False)      # snapshot of gear at sim time
+    uploaded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    items = relationship(
+        "LootReportItem",
+        back_populates="report",
+        cascade="all, delete-orphan",
+    )
+    __table_args__ = (UniqueConstraint("guild_id", "character_name", "realm_slug", "difficulty"),)
+
+
+class LootReportItem(Base):
+    __tablename__ = "loot_report_items"
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("loot_reports.id"), nullable=False, index=True)
+    zone_id = Column(Integer, nullable=False)
+    encounter_id = Column(Integer, nullable=False)
+    item_id = Column(Integer, nullable=False)
+    item_ilvl = Column(Integer, nullable=False)
+    slot_name = Column(String, nullable=False)
+    item_name = Column(String, nullable=True)
+    boss_name = Column(String, nullable=True)
+    raid_name = Column(String, nullable=True)
+    upgrade_dps = Column(Float, nullable=False)
+    upgrade_pct = Column(Float, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    report = relationship("LootReport", back_populates="items")

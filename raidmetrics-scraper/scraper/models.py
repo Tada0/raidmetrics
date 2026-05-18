@@ -10,6 +10,13 @@ from sqlalchemy.orm import declarative_base, relationship
 Base = declarative_base()
 
 
+class WowItemIcon(Base):
+    __tablename__ = "wow_item_icons"
+    item_id = Column(Integer, primary_key=True)
+    icon_url = Column(String, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class SeasonConfig(Base):
     __tablename__ = "season_config"
     id = Column(Integer, primary_key=True, index=True)
@@ -128,3 +135,20 @@ class ArchonPopularGem(Base):
     usage_percent = Column(Float, nullable=True)
 
     snapshot = relationship("ArchonSpecSnapshot", back_populates="popular_gems")
+
+
+class BossLootItem(Base):
+    """Items that drop from each raid boss, scraped from Blizzard's Journal API."""
+    __tablename__ = "boss_loot_items"
+    __table_args__ = (UniqueConstraint("encounter_id", "item_id"),)
+
+    id = Column(Integer, primary_key=True)
+    encounter_id = Column(Integer, nullable=False, index=True)
+    zone_id = Column(Integer, nullable=False)
+    boss_name = Column(String, nullable=True)
+    item_id = Column(Integer, nullable=False)
+    item_name = Column(String, nullable=True)
+    is_token = Column(Boolean, nullable=False, default=False)
+    synthesizes_slot = Column(String, nullable=True)   # e.g. 'legs'; null for non-tokens
+    allowed_class_ids = Column(JSONB, nullable=True)   # null = unrestricted
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

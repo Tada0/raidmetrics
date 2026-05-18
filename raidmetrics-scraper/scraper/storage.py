@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .models import (
     ArchonPopularEnchant, ArchonPopularGem,
-    ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot, SeasonConfig, WowheadBisItem,
+    ArchonPopularItem, ArchonScrapeRun, ArchonSpecSnapshot, BossLootItem, SeasonConfig, WowheadBisItem,
 )
 from .parsers import ScrapedSpec
 
@@ -101,6 +101,24 @@ def update_season_config(db: Session, season_name: str, zone_ids: list[int], ilv
     config.normal_ilvl_cap = ilvl_caps["normal"]
     config.updated_at = datetime.now(timezone.utc)
     db.commit()
+
+
+def save_boss_loot(db: Session, loot: list[dict]) -> None:
+    """Replace all boss_loot_items rows with fresh data from the Journal API."""
+    db.query(BossLootItem).delete()
+    for row in loot:
+        db.add(BossLootItem(
+            encounter_id=row["encounter_id"],
+            zone_id=row["zone_id"],
+            boss_name=row["boss_name"],
+            item_id=row["item_id"],
+            item_name=row["item_name"],
+            is_token=row.get("is_token", False),
+            synthesizes_slot=row.get("synthesizes_slot"),
+            allowed_class_ids=row.get("allowed_class_ids"),
+        ))
+    db.commit()
+    logger.info("Saved %d boss loot items", len(loot))
 
 
 def prune_old_runs(db: Session):

@@ -141,3 +141,20 @@ class LootReportItem(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     report = relationship("LootReport", back_populates="items")
+
+
+class BossLootItem(Base):
+    """Items that drop from each raid boss, scraped from Blizzard's Journal API."""
+    __tablename__ = "boss_loot_items"
+    id = Column(Integer, primary_key=True, index=True)
+    encounter_id = Column(Integer, nullable=False, index=True)
+    zone_id = Column(Integer, nullable=False)
+    boss_name = Column(String, nullable=True)
+    item_id = Column(Integer, nullable=False)
+    item_name = Column(String, nullable=True)
+    is_token = Column(Boolean, nullable=False, default=False)
+    synthesizes_slot = Column(String, nullable=True)   # e.g. 'legs'; null for non-tokens
+    allowed_class_ids = Column(JSONB, nullable=True)   # null = unrestricted
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("encounter_id", "item_id"),)

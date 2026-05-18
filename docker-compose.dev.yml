@@ -65,6 +65,9 @@ services:
       - DATABASE_URL=postgresql://${RAIDMETRICS_DB_USER}:${RAIDMETRICS_DB_PASSWORD}@db:5432/${RAIDMETRICS_DB_NAME}
       - SCRAPE_SCHEDULE=${SCRAPE_SCHEDULE:-0 * * * *}
       - RAIDMETRICS_SCRAPER_RELOAD=true
+      - BLIZZARD_CLIENT_ID=${BLIZZARD_CLIENT_ID}
+      - BLIZZARD_CLIENT_SECRET=${BLIZZARD_CLIENT_SECRET}
+      - BLIZZARD_REGION=${BLIZZARD_REGION:-eu}
     depends_on:
       db:
         condition: service_healthy

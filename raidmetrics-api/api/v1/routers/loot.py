@@ -103,6 +103,9 @@ async def upload_loot_report(
     if not matched_char:
         raise HTTPException(status_code=403, detail="Character not found for this user and guild.")
 
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+
     config = _get_season_config(db)
     ilvl_cap = _ilvl_cap(config, body.difficulty)
 
@@ -113,6 +116,7 @@ async def upload_loot_report(
         expected_difficulty=body.difficulty,
         current_zone_ids=config.zone_ids,
         ilvl_cap=ilvl_cap,
+        blizzard_access_token=current_user.blizzard_access_token,
     )
 
     # Upsert loot_report

@@ -8,10 +8,13 @@ from dataclasses import dataclass, field
 import httpx
 from fastapi import HTTPException
 
+from ..battlenet import battlenet_client
+
 logger = logging.getLogger(__name__)
 
 _RAIDBOTS_BASE = "https://www.raidbots.com/simbot/report"
 _REPORT_ID_RE = re.compile(r"raidbots\.com/simbot/report/([A-Za-z0-9_-]+)")
+_BLIZZARD_EQUIPMENT_PATH = "/profile/wow/character/{realm}/{character}/equipment"
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +131,7 @@ def _parse_input(txt: str) -> dict:
         "difficulty": None,
         "profileset_ilvl": None,
         "upgrade_all_equipped": False,
+        "has_external_buffs": False,
         "equipped_items": [],
         # For profileset comment lookup: maps profileset key prefix → (item_name, raid_name, boss_name)
         "_profileset_comments": {},
@@ -161,6 +165,8 @@ def _parse_input(txt: str) -> dict:
             result["desired_targets"] = int(stripped.split("=")[1])
         if stripped.startswith("max_time=") and not stripped.startswith("#"):
             result["max_time"] = int(stripped.split("=")[1])
+        if stripped.startswith("external_buffs.pool=") and not stripped.startswith("#"):
+            result["has_external_buffs"] = True
 
         # Section markers
         if stripped == "### Gear from Bags":
@@ -286,11 +292,9 @@ def _parse_csv(csv_text: str, profileset_comments: dict) -> tuple[float, list[di
         raise HTTPException(status_code=422, detail="Report data is empty.")
 
     baseline_dps: float | None = None
-    items: list[dict] = []
+    # keyed by (zone_id, encounter_id, item_id) — keeps only the best slot variant
+    best_items: dict[tuple, dict] = {}
 
-    # Catalyst detection: valid reports have ~10 more rows than catalyst-off.
-    # We track unique item_ids per encounter; catalyst adds set-piece options.
-    # Minimum threshold: any report with < 35 data rows is suspiciously sparse.
     _CATALYST_MIN_ROWS = 35
 
     for row in rows:
@@ -318,12 +322,17 @@ def _parse_csv(csv_text: str, profileset_comments: dict) -> tuple[float, list[di
         if upgrade_pct <= 0:
             continue
 
-        comment = profileset_comments.get((zone_id, enc_id, item_id), ())
+        key = (zone_id, enc_id, item_id)
+        existing = best_items.get(key)
+        if existing and existing["upgrade_pct"] >= round(upgrade_pct, 4):
+            continue
+
+        comment = profileset_comments.get(key, ())
         item_name = comment[0] if comment else None
         raid_name = comment[2] if comment else None
         boss_name = comment[3] if comment else None
 
-        items.append({
+        best_items[key] = {
             "zone_id": zone_id,
             "encounter_id": enc_id,
             "item_id": item_id,
@@ -334,11 +343,11 @@ def _parse_csv(csv_text: str, profileset_comments: dict) -> tuple[float, list[di
             "raid_name": raid_name,
             "upgrade_dps": round(upgrade_dps, 2),
             "upgrade_pct": round(upgrade_pct, 4),
-        })
+        }
 
     catalyst_included = len(rows) - 1 >= _CATALYST_MIN_ROWS  # -1 for baseline row
 
-    return baseline_dps or 0.0, items, catalyst_included
+    return baseline_dps or 0.0, list(best_items.values()), catalyst_included
 
 
 # ---------------------------------------------------------------------------
@@ -394,8 +403,112 @@ def validate_report(
     if not parsed["upgrade_all_equipped"]:
         errors.append("Report must be run with 'Upgrade All Equipped Gear to the Same Level' enabled.")
 
+    if parsed["has_external_buffs"]:
+        errors.append("Report must have external buffs disabled (e.g. Power Infusion).")
+
     if not catalyst_included:
         errors.append("Report must be run with 'Include Catalyst Items' enabled.")
+
+    if errors:
+        raise HTTPException(status_code=422, detail=errors)
+
+
+# ---------------------------------------------------------------------------
+# Gear comparison against Blizzard live data
+# ---------------------------------------------------------------------------
+
+_SIMC_TO_BLIZZARD_SLOT: dict[str, str] = {
+    "head": "HEAD",
+    "neck": "NECK",
+    "shoulder": "SHOULDER",
+    "back": "BACK",
+    "chest": "CHEST",
+    "wrist": "WRIST",
+    "hands": "HANDS",
+    "waist": "WAIST",
+    "legs": "LEGS",
+    "feet": "FEET",
+    "finger1": "FINGER_1",
+    "finger2": "FINGER_2",
+    "trinket1": "TRINKET_1",
+    "trinket2": "TRINKET_2",
+    "main_hand": "MAIN_HAND",
+    "off_hand": "OFF_HAND",
+}
+
+
+async def _fetch_blizzard_gear(character_name: str, realm_slug: str, access_token: str) -> dict[str, dict]:
+    """Return {BLIZZARD_SLOT_TYPE: {item_id, bonus_ids, enchant_id, gem_ids}} from Blizzard API."""
+    path = _BLIZZARD_EQUIPMENT_PATH.format(realm=realm_slug.lower(), character=character_name.lower())
+    async with battlenet_client(access_token) as client:
+        resp = await client.get(path)
+
+    gear: dict[str, dict] = {}
+    for item in resp.json().get("equipped_items", []):
+        slot_type = item.get("slot", {}).get("type", "")
+        if not slot_type:
+            continue
+        enchant_id = next(
+            (e["enchantment_id"] for e in item.get("enchantments", [])
+             if e.get("enchantment_slot", {}).get("type") == "PERMANENT"),
+            None,
+        )
+        sockets = item.get("sockets", [])
+        gem_ids = sorted(s["item"]["id"] for s in sockets if s.get("item", {}).get("id"))
+        gear[slot_type] = {
+            "item_id": item.get("item", {}).get("id", 0),
+            "bonus_ids": set(item.get("bonus_list", [])),
+            "enchant_id": enchant_id,
+            "gem_ids": gem_ids,
+        }
+    return gear
+
+
+async def validate_gear_matches_blizzard(
+    equipped_items: list[EquippedItem],
+    character_name: str,
+    realm_slug: str,
+    access_token: str,
+) -> None:
+    """Raise HTTPException 422 if any simulated slot doesn't match live Blizzard gear."""
+    live_gear = await _fetch_blizzard_gear(character_name, realm_slug, access_token)
+
+    errors = []
+    for item in equipped_items:
+        blizzard_slot = _SIMC_TO_BLIZZARD_SLOT.get(item.slot)
+        if blizzard_slot is None:
+            continue
+
+        live = live_gear.get(blizzard_slot)
+        if live is None:
+            errors.append(f"Slot {item.slot}: item not found on your character.")
+            continue
+
+        if item.item_id != live["item_id"]:
+            errors.append(
+                f"Slot {item.slot}: item doesn't match your current gear "
+                f"(sim item ID {item.item_id}, live item ID {live['item_id']}). "
+                "Please re-run the simulation with your current gear."
+            )
+            continue
+
+        if set(item.bonus_ids) != live["bonus_ids"]:
+            errors.append(
+                f"Slot {item.slot} ({item.item_name}): item stats/ilvl have changed since the simulation was run. "
+                "Please re-run the simulation with your current gear."
+            )
+
+        if item.enchant_id != live["enchant_id"]:
+            errors.append(
+                f"Slot {item.slot} ({item.item_name}): enchant has changed since the simulation was run. "
+                "Please re-run the simulation with your current gear."
+            )
+
+        if sorted(item.gem_ids) != live["gem_ids"]:
+            errors.append(
+                f"Slot {item.slot} ({item.item_name}): gems have changed since the simulation was run. "
+                "Please re-run the simulation with your current gear."
+            )
 
     if errors:
         raise HTTPException(status_code=422, detail=errors)
@@ -412,6 +525,7 @@ async def process_report(
     expected_difficulty: str,
     current_zone_ids: list[int],
     ilvl_cap: int,
+    blizzard_access_token: str,
 ) -> tuple[ParsedReport, list[dict]]:
     """Fetch, parse and validate. Returns (ParsedReport, items)."""
     input_txt, csv_txt = await fetch_report(url)
@@ -431,6 +545,13 @@ async def process_report(
         ilvl_cap,
         catalyst_included,
         total_csv_rows,
+    )
+
+    await validate_gear_matches_blizzard(
+        equipped_items=parsed_input["equipped_items"],
+        character_name=expected_character,
+        realm_slug=expected_realm,
+        access_token=blizzard_access_token,
     )
 
     report = ParsedReport(

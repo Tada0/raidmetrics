@@ -1,16 +1,18 @@
 """Loot report endpoints — upload and retrieve Raidbots Droptimizer reports."""
+import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ...dal.db import get_db
-from ...dal.models import LootReport, LootReportItem, SeasonConfig, User, UserCharacter
+from ...dal.models import LootReport, LootReportItem, RaidRoster, SeasonConfig, User, UserCharacter
 from ..auth import get_current_user
-from ..permissions import assert_guild_member
-from ..services.raidbots import process_report
+from ..battlenet import battlenet_client
+from ..permissions import assert_guild_member, assert_guild_officer
+from ..services.raidbots import EquippedItem, check_gear_matches_blizzard, process_report
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +194,129 @@ async def upload_loot_report(
         "report": _report_to_dict(report),
         "items": [_item_to_dict(i) for i in report.items],
     }
+
+
+# ---------------------------------------------------------------------------
+# POST /guilds/{guild_id}/loot/prune
+# ---------------------------------------------------------------------------
+
+_REPORT_MAX_AGE = timedelta(hours=12)
+
+
+def _equipped_items_from_json(items_json: list[dict]) -> list[EquippedItem]:
+    return [
+        EquippedItem(
+            slot=d["slot"],
+            item_name=d.get("item_name", ""),
+            item_id=d["item_id"],
+            ilvl=d.get("ilvl", 0),
+            enchant_id=d.get("enchant_id"),
+            gem_ids=d.get("gem_ids", []),
+            bonus_ids=d.get("bonus_ids", []),
+            crafted=d.get("crafted", False),
+        )
+        for d in (items_json or [])
+    ]
+
+
+class PruneReportsRequest(BaseModel):
+    difficulty: str
+
+
+@router.post("/guilds/{guild_id}/loot/prune")
+async def prune_loot_reports(
+    guild_id: int,
+    body: PruneReportsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if body.difficulty not in ("normal", "heroic", "mythic"):
+        raise HTTPException(status_code=422, detail="difficulty must be 'normal', 'heroic', or 'mythic'.")
+
+    assert_guild_officer(guild_id, current_user)
+
+    if not current_user.blizzard_access_token:
+        raise HTTPException(status_code=401, detail="battlenet_token_expired")
+
+    roster = (
+        db.query(RaidRoster)
+        .filter(RaidRoster.guild_id == guild_id, RaidRoster.difficulty == body.difficulty)
+        .first()
+    )
+    if not roster or not roster.members:
+        return {"difficulty": body.difficulty, "results": []}
+
+    now = datetime.now(UTC)
+    results = []
+    reports_to_delete = []
+    members_for_gear_check = []
+
+    for member in roster.members:
+        # character_realm is display-name format — normalise to slug for DB lookup
+        realm_slug = member.character_realm.lower().replace(" ", "-")
+
+        report = (
+            db.query(LootReport)
+            .filter(
+                LootReport.guild_id == guild_id,
+                LootReport.character_name == member.character_name,
+                LootReport.realm_slug == realm_slug,
+                LootReport.difficulty == body.difficulty,
+            )
+            .first()
+        )
+
+        if not report:
+            results.append({"character_name": member.character_name, "realm_slug": realm_slug,
+                            "status": "not_uploaded", "details": []})
+            continue
+
+        if now - report.updated_at > _REPORT_MAX_AGE:
+            reports_to_delete.append(report)
+            results.append({"character_name": member.character_name, "realm_slug": realm_slug,
+                            "status": "expired", "details": []})
+            continue
+
+        members_for_gear_check.append((member, realm_slug, report))
+
+    # Run all gear checks in parallel with a single shared client
+    if members_for_gear_check:
+        sem = asyncio.Semaphore(5)
+
+        async def _check(member, realm_slug, report):
+            async with sem:
+                return await check_gear_matches_blizzard(
+                    client,
+                    _equipped_items_from_json(report.equipped_items),
+                    member.character_name,
+                    realm_slug,
+                )
+
+        async with battlenet_client(current_user.blizzard_access_token) as client:
+            gear_results = await asyncio.gather(
+                *[_check(m, rs, r) for m, rs, r in members_for_gear_check],
+                return_exceptions=True,
+            )
+
+        for (member, realm_slug, report), errors in zip(members_for_gear_check, gear_results):
+            if isinstance(errors, Exception):
+                results.append({"character_name": member.character_name, "realm_slug": realm_slug,
+                                "status": "check_failed", "details": [str(errors)]})
+                continue
+            if errors:
+                reports_to_delete.append(report)
+                results.append({"character_name": member.character_name, "realm_slug": realm_slug,
+                                "status": "gear_mismatch", "details": errors})
+            else:
+                results.append({"character_name": member.character_name, "realm_slug": realm_slug,
+                                "status": "ok", "details": []})
+
+    for report in reports_to_delete:
+        db.delete(report)
+    if reports_to_delete:
+        db.commit()
+
+    return {"difficulty": body.difficulty, "results": results}
 
 
 # ---------------------------------------------------------------------------

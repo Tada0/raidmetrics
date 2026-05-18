@@ -19,27 +19,99 @@
     @if (!char.guild) {
       <p class="text-muted text-sm">{{ char.name }} is not in a guild.</p>
     } @else {
-      <div class="grid grid-cols-1 gap-4 max-w-lg">
+      <div class="flex items-start gap-4">
 
-        <div class="bg-surface-raised rounded-xl border border-border p-5">
-          <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Character</p>
-          <p class="text-text font-semibold">{{ char.name }}</p>
-          <p class="text-muted text-sm mt-0.5">{{ char.realm }} · {{ char.class }}</p>
-        </div>
+        <!-- Left: character info -->
+        <div class="flex flex-col gap-4 w-64 shrink-0">
+          <div class="bg-surface-raised rounded-xl border border-border p-5">
+            <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Character</p>
+            <p class="text-text font-semibold">{{ char.name }}</p>
+            <p class="text-muted text-sm mt-0.5">{{ char.realm }} · {{ char.class }}</p>
+          </div>
 
-        <div class="bg-surface-raised rounded-xl border border-border p-5">
-          <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Guild Role</p>
-          <div class="flex items-center gap-3">
-            <p class="text-text font-semibold">{{ roleLabel(char.is_gm, char.is_officer) }}</p>
-            @if (char.is_gm) {
-              <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-400">GM</span>
-            } @else if (char.is_officer) {
-              <span class="px-2 py-0.5 rounded text-xs font-medium bg-accent/15 text-accent">Officer</span>
+          <div class="bg-surface-raised rounded-xl border border-border p-5">
+            <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Guild Role</p>
+            <div class="flex items-center gap-3">
+              <p class="text-text font-semibold">{{ roleLabel(char.is_gm, char.is_officer) }}</p>
+              @if (char.is_gm) {
+                <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-400">GM</span>
+              } @else if (char.is_officer) {
+                <span class="px-2 py-0.5 rounded text-xs font-medium bg-accent/15 text-accent">Officer</span>
+              }
+            </div>
+            @if (char.guild_rank !== null) {
+              <p class="text-muted text-xs mt-1">Rank {{ char.guild_rank }}</p>
             }
           </div>
-          @if (char.guild_rank !== null) {
-            <p class="text-muted text-xs mt-1">Rank {{ char.guild_rank }}</p>
-          }
+        </div>
+
+        <!-- Right: officer tools -->
+        @if (isOfficer()) {
+          <div class="flex-1 bg-surface-raised rounded-xl border border-border p-5">
+            <p class="text-xs font-medium text-muted uppercase tracking-wider mb-4">Loot Reports</p>
+
+            <!-- Difficulty tabs + action -->
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex rounded-lg border border-border overflow-hidden">
+                @for (diff of difficulties; track diff) {
+                  <button
+                    (click)="selectPruneDifficulty(diff)"
+                    class="px-3 py-1.5 text-sm font-medium transition-colors"
+                    [class]="pruneDifficulty() === diff
+                      ? 'bg-accent text-white'
+                      : 'bg-surface-raised text-muted hover:text-text'"
+                  >{{ diffLabels[diff] }}</button>
+                }
+              </div>
+
+              <button
+                (click)="runPruneCheck()"
+                [disabled]="pruneLoading()"
+                class="px-4 py-1.5 rounded-lg text-sm font-medium bg-surface border border-border text-text hover:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                @if (pruneLoading()) { Checking… } @else { Validate Reports }
+              </button>
+            </div>
+
+            @if (pruneError()) {
+              <p class="text-danger text-xs">{{ pruneError() }}</p>
+            }
+
+            @if (pruneResults(); as results) {
+              <div class="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                @for (r of results; track r.character_name) {
+                  <div class="px-4 py-2.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-text">{{ r.character_name }}-{{ r.realm_slug }}</span>
+                      <span class="text-xs font-medium" [class]="statusClass(r.status)">
+                        {{ statusLabel(r.status) }}
+                      </span>
+                    </div>
+                    @if (r.details.length > 0) {
+                      <ul class="mt-1 space-y-0.5">
+                        @for (d of r.details; track $index) {
+                          <li class="text-xs text-muted">{{ d }}</li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="flex gap-4 mt-3 text-xs text-muted">
+                <span class="text-green-400">{{ countByStatus(results, 'ok') }} OK</span>
+                <span>{{ countByStatus(results, 'not_uploaded') }} not uploaded</span>
+                <span class="text-amber-400">{{ countByStatus(results, 'expired') }} expired</span>
+                <span class="text-danger">{{ countByStatus(results, 'gear_mismatch') }} gear mismatch</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Placeholder: loot distribution -->
+        <div class="flex-1 bg-surface-raised rounded-xl border border-border p-5">
+          <p class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Loot Distribution</p>
+          <p class="text-muted text-sm">Coming soon.</p>
         </div>
 
       </div>

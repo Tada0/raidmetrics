@@ -83,7 +83,7 @@ class RaidRosterMember(Base):
     id = Column(Integer, primary_key=True, index=True)
     roster_id = Column(Integer, ForeignKey("raid_rosters.id"), nullable=False)
     character_name = Column(String, nullable=False)
-    character_realm = Column(String, nullable=False)
+    character_realm = Column(String, nullable=False)  # display-name format e.g. "Draenor", NOT slug — use .lower().replace(" ", "-") when comparing to realm_slug
     character_class = Column(String, nullable=True)
     role = Column(String, nullable=True)  # 'tank' | 'healer' | 'dps'
     sort_order = Column(Integer, default=0)

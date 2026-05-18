@@ -437,11 +437,10 @@ _SIMC_TO_BLIZZARD_SLOT: dict[str, str] = {
 }
 
 
-async def _fetch_blizzard_gear(character_name: str, realm_slug: str, access_token: str) -> dict[str, dict]:
+async def _fetch_blizzard_gear(client, character_name: str, realm_slug: str) -> dict[str, dict]:
     """Return {BLIZZARD_SLOT_TYPE: {item_id, bonus_ids, enchant_id, gem_ids}} from Blizzard API."""
     path = _BLIZZARD_EQUIPMENT_PATH.format(realm=realm_slug.lower(), character=character_name.lower())
-    async with battlenet_client(access_token) as client:
-        resp = await client.get(path)
+    resp = await client.get(path)
 
     gear: dict[str, dict] = {}
     for item in resp.json().get("equipped_items", []):
@@ -464,15 +463,8 @@ async def _fetch_blizzard_gear(character_name: str, realm_slug: str, access_toke
     return gear
 
 
-async def validate_gear_matches_blizzard(
-    equipped_items: list[EquippedItem],
-    character_name: str,
-    realm_slug: str,
-    access_token: str,
-) -> None:
-    """Raise HTTPException 422 if any simulated slot doesn't match live Blizzard gear."""
-    live_gear = await _fetch_blizzard_gear(character_name, realm_slug, access_token)
-
+def _compare_gear(equipped_items: list[EquippedItem], live_gear: dict[str, dict]) -> list[str]:
+    """Compare sim equipped items against live Blizzard gear. Returns mismatch descriptions."""
     errors = []
     for item in equipped_items:
         blizzard_slot = _SIMC_TO_BLIZZARD_SLOT.get(item.slot)
@@ -509,7 +501,29 @@ async def validate_gear_matches_blizzard(
                 f"Slot {item.slot} ({item.item_name}): gems have changed since the simulation was run. "
                 "Please re-run the simulation with your current gear."
             )
+    return errors
 
+
+async def check_gear_matches_blizzard(
+    client,
+    equipped_items: list[EquippedItem],
+    character_name: str,
+    realm_slug: str,
+) -> list[str]:
+    """Return mismatch error strings without raising. Empty list = gear matches."""
+    live_gear = await _fetch_blizzard_gear(client, character_name, realm_slug)
+    return _compare_gear(equipped_items, live_gear)
+
+
+async def validate_gear_matches_blizzard(
+    equipped_items: list[EquippedItem],
+    character_name: str,
+    realm_slug: str,
+    access_token: str,
+) -> None:
+    """Raise HTTPException 422 if any simulated slot doesn't match live Blizzard gear."""
+    async with battlenet_client(access_token) as client:
+        errors = await check_gear_matches_blizzard(client, equipped_items, character_name, realm_slug)
     if errors:
         raise HTTPException(status_code=422, detail=errors)
 
